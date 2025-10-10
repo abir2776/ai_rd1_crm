@@ -9,6 +9,7 @@ class AuthTypeChoices(models.TextChoices):
 
 
 class OrganizationUserRole(models.TextChoices):
+    OWNER = "OWNER", "Owner"
     ADMIN = "ADMIN", "Admin"
     MANAGER = "MANAGER", "Manager"
     RECRUITER = "RECRUITER", "Recruiter"

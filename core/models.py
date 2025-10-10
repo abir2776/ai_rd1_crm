@@ -50,7 +50,7 @@ class User(AbstractUser, BaseModelWithUID):
 
     objects = CustomUserManager()
 
-    USERNAME_FIELD = "phone"
+    USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
     class Meta:

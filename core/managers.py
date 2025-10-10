@@ -10,17 +10,17 @@ logger = logging.getLogger(__name__)
 
 class CustomUserManager(BaseUserManager):
     def _create_user(
-        self, phone, password, is_staff, is_superuser, is_active=True, **kwargs
+        self, email, password, is_staff, is_superuser, is_active=True, **kwargs
     ):
         """
-        Creates and saves a User with the given phone and password.
+        Creates and saves a User with the given email and password.
         """
         now = timezone.now()
-        if not phone:
-            raise ValueError("phone must be set!")
+        if not email:
+            raise ValueError("email must be set!")
         user = self.model(
-            username=phone,
-            phone=phone,
+            username=email,
+            email=email,
             is_staff=is_staff,
             is_active=is_active,
             is_superuser=is_superuser,
@@ -31,11 +31,11 @@ class CustomUserManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_user(self, phone, password=None, **kwargs):
-        return self._create_user(phone, password, False, False, **kwargs)
+    def create_user(self, email, password=None, **kwargs):
+        return self._create_user(email, password, False, False, **kwargs)
 
-    def create_superuser(self, phone, password, **kwargs):
-        return self._create_user(phone, password, True, True, **kwargs)
+    def create_superuser(self, email, password, **kwargs):
+        return self._create_user(email, password, True, True, **kwargs)
 
     def get_status_active(self):
         return self.get_queryset().filter(status=Status.ACTIVE, is_active=True)
