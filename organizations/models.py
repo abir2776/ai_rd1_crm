@@ -1,0 +1,138 @@
+from django.db import models
+from django.utils import timezone
+from autoslug import AutoSlugField
+from .choices import AuthTypeChoices, OrganizationUserRole
+from common.models import BaseModelWithUID
+from core.models import User
+from common.choices import Status
+from versatileimagefield.fields import VersatileImageField
+from .utils import (
+    get_organization_media_path_prefix,
+    get_organization_slug,
+    get_platform_slug,
+    get_platform_media_path_prefix,
+)
+
+
+class Organization(BaseModelWithUID):
+    name = models.CharField(max_length=255, unique=True)
+    slug = AutoSlugField(populate_from=get_organization_slug, unique=True)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    website = models.URLField(blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    country = models.CharField(max_length=100, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+    logo = VersatileImageField(
+        "Logo",
+        upload_to=get_organization_media_path_prefix,
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Organization"
+        verbose_name_plural = "Organizations"
+
+    def __str__(self):
+        return self.name
+
+
+class Platform(BaseModelWithUID):
+    name = models.CharField(max_length=100, unique=True)
+    slug = AutoSlugField(populate_from=get_platform_slug, unique=True)
+    description = models.TextField(blank=True, null=True)
+    base_url = models.URLField(blank=True, null=True)
+    auth_type = models.CharField(
+        max_length=20,
+        choices=AuthTypeChoices.choices,
+        default=AuthTypeChoices.OAUTH2,
+    )
+    logo = VersatileImageField(
+        "Logo",
+        upload_to=get_platform_media_path_prefix,
+        blank=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Platform"
+        verbose_name_plural = "Platforms"
+
+    def __str__(self):
+        return self.name
+
+
+class OrganizationPlatform(BaseModelWithUID):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="platform_connections"
+    )
+    platform = models.ForeignKey(
+        Platform, on_delete=models.CASCADE, related_name="organization_connections"
+    )
+    api_key = models.CharField(max_length=255, blank=True, null=True)
+    client_id = models.CharField(max_length=255, blank=True, null=True)
+    client_secret = models.CharField(max_length=255, blank=True, null=True)
+    access_token = models.TextField(blank=True, null=True)
+    refresh_token = models.TextField(blank=True, null=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+    is_connected = models.BooleanField(default=False)
+    connected_at = models.DateTimeField(blank=True, null=True)
+    last_synced_at = models.DateTimeField(blank=True, null=True)
+    config = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        unique_together = ("organization", "platform")
+        verbose_name = "Organization Platform Connection"
+        verbose_name_plural = "Organization Platform Connections"
+
+    def __str__(self):
+        return f"{self.organization.name} - {self.platform.name}"
+
+
+class OrganizationUser(BaseModelWithUID):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="users"
+    )
+    user = models.OneToOneField(
+        User, on_delete=models.CASCADE, related_name="organization_profile"
+    )
+    role = models.CharField(
+        max_length=20, choices=OrganizationUserRole, default="viewer"
+    )
+    title = models.CharField(max_length=100, blank=True, null=True)
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    is_active = models.BooleanField(default=True)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    last_active = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        unique_together = ("organization", "user")
+        verbose_name = "Organization User"
+        verbose_name_plural = "Organization Users"
+        ordering = ["organization", "user__username"]
+
+    def __str__(self):
+        return f"{self.user.get_full_name() or self.user.username} ({self.organization.name})"
+
+    def activate(self):
+        self.is_active = True
+        self.save()
+
+    def deactivate(self):
+        self.is_active = False
+        self.save()
+
+    def update_last_active(self):
+        self.last_active = timezone.now()
+        self.save()
