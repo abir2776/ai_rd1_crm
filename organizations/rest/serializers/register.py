@@ -31,16 +31,6 @@ class PublicOrganizationRegistrationSerializer(serializers.Serializer):
         required=False,
     )
 
-    class Meta:
-        model = User
-        fields = (
-            "email",
-            "password",
-            "phone",
-            "first_name",
-            "last_name",
-        )
-
     def validate_email(self, data):
         email = data.lower()
         if User.objects.filter(email=email).exists():
