@@ -20,8 +20,10 @@ logger = logging.getLogger(__name__)
 
 
 class User(AbstractUser, BaseModelWithUID):
-    email = models.EmailField(unique=True, blank=True, null=True)
-    phone = PhoneNumberField(unique=True, db_index=True, verbose_name="Phone Number")
+    email = models.EmailField(unique=True)
+    phone = PhoneNumberField(
+        unique=True, db_index=True, verbose_name="Phone Number", blank=True, null=True
+    )
     slug = AutoSlugField(populate_from=get_user_slug, unique=True)
     avatar = VersatileImageField(
         "Avatar",
@@ -62,3 +64,19 @@ class User(AbstractUser, BaseModelWithUID):
     def get_name(self):
         name = " ".join([self.first_name, self.last_name])
         return name.strip()
+
+    def get_organization(self):
+        return (
+            self.organization_profile.filter(is_active=True)
+            .select_related("organization")
+            .first()
+            .organization
+        )
+
+    def get_role(self):
+        return (
+            self.organization_profile.filter(is_active=True)
+            .select_related("organization")
+            .first()
+            .role
+        )

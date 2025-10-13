@@ -74,4 +74,5 @@ urlpatterns = [
     ),
     path("admin/", admin.site.urls),
     path("api/v1/auth/", include("organizations.rest.urls.register")),
+    path("api/v1/organizations", include("organizations.rest.urls")),
 ]

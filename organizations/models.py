@@ -104,7 +104,7 @@ class OrganizationUser(BaseModelWithUID):
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="users"
     )
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name="organization_profile"
     )
     role = models.CharField(
@@ -112,6 +112,7 @@ class OrganizationUser(BaseModelWithUID):
     )
     title = models.CharField(max_length=100, blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
+    email = models.EmailField(unique=True, blank=True, null=True)
     is_active = models.BooleanField(default=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     last_active = models.DateTimeField(blank=True, null=True)
