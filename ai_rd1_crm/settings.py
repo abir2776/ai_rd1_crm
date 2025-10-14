@@ -39,7 +39,7 @@ DEFAULT_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
-CREATED_APPS = ["core", "organizations", "subscription"]
+CREATED_APPS = ["core", "organizations", "subscription", "interview"]
 THIRD_PARTY_APPS = [
     "versatileimagefield",
     "drf_yasg",
