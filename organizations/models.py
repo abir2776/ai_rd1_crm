@@ -82,9 +82,10 @@ class OrganizationPlatform(BaseModelWithUID):
     platform = models.ForeignKey(
         Platform, on_delete=models.CASCADE, related_name="organization_connections"
     )
-    api_key = models.CharField(max_length=255, blank=True, null=True)
     access_token = models.TextField(blank=True, null=True)
     refresh_token = models.TextField(blank=True, null=True)
+    token_type = models.CharField(max_length=50, blank=True, null=True)
+    base_url = models.URLField(blank=True, null=True)
     expires_at = models.DateTimeField(blank=True, null=True)
     is_connected = models.BooleanField(default=False)
     connected_at = models.DateTimeField(blank=True, null=True)
