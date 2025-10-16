@@ -9,7 +9,7 @@ urlpatterns = [
         name="organization-registration",
     ),
     path(
-        "/verify/<int:token>",
+        "verify/<uuid:token>",
         register.UserVerificationAPIView.as_view(),
         name="user-verify",
     ),

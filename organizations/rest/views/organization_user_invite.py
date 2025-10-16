@@ -2,6 +2,7 @@ from rest_framework.generics import ListCreateAPIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
 from organizations.rest.serializers.organization_user_invite import (
     OrganizationUserInvitationSerializer,
 )
@@ -26,10 +27,20 @@ class OrganizationUserInviteListCreateView(ListCreateAPIView):
 
 
 class OrganizationUserInviteAcceptAPIView(APIView):
+    permission_classes = [AllowAny]
+
     def put(self, request, token):
         invitation = OrganizationUserInvitation.objects.get(token=token)
-        user = User.objects.get(email=invitation.email)
-        OrganizationUser.objects.create(
-            user=user, organization=invitation.organization, role=invitation.role
-        )
-        return Response({"details": "Invitation Accepted"}, status=status.HTTP_200_OK)
+        try:
+            user = User.objects.get(email=invitation.email)
+            OrganizationUser.objects.create(
+                user=user, organization=invitation.organization, role=invitation.role
+            )
+            return Response(
+                {"details": "Invitation Accepted"}, status=status.HTTP_200_OK
+            )
+        except User.DoesNotExist:
+            return Response(
+                {"detail": "User is not register yet."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )

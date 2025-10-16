@@ -22,7 +22,10 @@ class PublicOrganizationRegistration(APIView):
 
 
 class UserVerificationAPIView(APIView):
+    permission_classes = [AllowAny]
+
     def put(self, request, token):
         user = User.objects.get(token=token)
         user.is_verified = True
-        return Response({"details": "User Verified"}, status=status.HTTP_200_OK)
+        user.save()
+        return Response({"detail": "User Verified"}, status=status.HTTP_200_OK)
