@@ -6,7 +6,7 @@ urlpatterns = [
     path(
         "",
         organization_user_invite.OrganizationUserInviteListCreateView.as_view(),
-        name="organization-user-list-create",
+        name="organization-user-invite",
     ),
     path(
         "/accept/<uuid:token>",
