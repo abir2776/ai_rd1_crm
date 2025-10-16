@@ -7,5 +7,10 @@ urlpatterns = [
         "register",
         register.PublicOrganizationRegistration.as_view(),
         name="organization-registration",
-    )
+    ),
+    path(
+        "/verify/<int:token>",
+        register.UserVerificationAPIView.as_view(),
+        name="user-verify",
+    ),
 ]

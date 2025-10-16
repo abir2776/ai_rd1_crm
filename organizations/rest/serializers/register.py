@@ -7,6 +7,7 @@ from versatileimagefield.serializers import VersatileImageFieldSerializer
 from core.models import User
 from organizations.models import Organization, OrganizationUser
 from organizations.choices import OrganizationUserRole
+from common.tasks import send_email_task
 
 logger = logging.getLogger(__name__)
 
@@ -88,4 +89,15 @@ class PublicOrganizationRegistrationSerializer(serializers.Serializer):
                 is_active=True,
             )
             logger.debug(f"Added user: {user} to organization: {organization}")
+            context = {
+                "username": user.get_full_name(),
+                "verification_link": f"http://example.com/verify",
+                "current_year": 2025,
+            }
+            send_email_task.delay(
+                subject="Verify your email address",
+                recipient=email,
+                template_name="organization_register/verify.html",
+                context=context,
+            )
         return user

@@ -14,3 +14,10 @@ class OrganizationUserRole(models.TextChoices):
     MANAGER = "MANAGER", "Manager"
     RECRUITER = "RECRUITER", "Recruiter"
     VIEWER = "VIEWER", "Viewer"
+
+
+class OrganizationInvitationStatus(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    ACCEPTED = "ACCEPTED", "Accepted"
+    DECLINED = "DECLINED", "Declined"
+    EXPIRED = "EXPIRED", "Expired"

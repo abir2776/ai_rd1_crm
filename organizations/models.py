@@ -1,10 +1,11 @@
 from django.db import models
 from django.utils import timezone
 from autoslug import AutoSlugField
-from .choices import AuthTypeChoices, OrganizationUserRole
+from .choices import AuthTypeChoices, OrganizationUserRole, OrganizationInvitationStatus
 from common.models import BaseModelWithUID
 from core.models import User
 from common.choices import Status
+import uuid
 from versatileimagefield.fields import VersatileImageField
 from .utils import (
     get_organization_media_path_prefix,
@@ -138,3 +139,34 @@ class OrganizationUser(BaseModelWithUID):
     def update_last_active(self):
         self.last_active = timezone.now()
         self.save()
+
+
+class OrganizationUserInvitation(BaseModelWithUID):
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="invitations"
+    )
+    email = models.EmailField()
+    role = models.CharField(
+        max_length=20, choices=OrganizationUserRole, default="viewer"
+    )
+    token = models.UUIDField(
+        db_index=True, unique=True, default=uuid.uuid4, editable=False
+    )
+    sender = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, related_name="sent_invitations"
+    )
+    invitation_status = models.CharField(
+        max_length=20,
+        choices=OrganizationInvitationStatus.choices,
+        default="pending",
+    )
+    sent_at = models.DateTimeField(auto_now_add=True)
+    responded_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        verbose_name = "Organization Invitation"
+        verbose_name_plural = "Organization Invitations"
+        ordering = ["-sent_at"]
+
+    def __str__(self):
+        return f"Invitation to {self.email} for {self.organization.name}"

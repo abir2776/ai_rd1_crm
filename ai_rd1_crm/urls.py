@@ -35,7 +35,7 @@ schema_view = get_schema_view(
         default_version="main",
         license=openapi.License(name="BSD License"),
     ),
-    public=False,
+    public=True,
     permission_classes=[permissions.AllowAny],
 )
 

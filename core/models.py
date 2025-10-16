@@ -1,4 +1,5 @@
 import logging
+import uuid
 
 from autoslug import AutoSlugField
 
@@ -49,6 +50,10 @@ class User(AbstractUser, BaseModelWithUID):
     date_of_birth = models.DateField(null=True, blank=True)
     height = models.FloatField(blank=True, null=True)
     weight = models.IntegerField(blank=True, null=True)
+    token = models.UUIDField(
+        db_index=True, unique=True, default=uuid.uuid4, editable=False
+    )
+    is_verified = models.BooleanField(default=False)
 
     objects = CustomUserManager()
 
@@ -79,22 +84,4 @@ class User(AbstractUser, BaseModelWithUID):
             .select_related("organization")
             .first()
             .role
-        )
-
-
-class UserOTP(BaseModelWithUID):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="user_otps")
-    otp = models.CharField(max_length=6)
-    is_used = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"OTP for {self.user.email} - {'Used' if self.is_used else 'Unused'}"
-
-    def is_valid(self):
-        from django.utils import timezone
-        from datetime import timedelta
-
-        return not self.is_used and (timezone.now() - self.created_at) < timedelta(
-            minutes=2
         )
