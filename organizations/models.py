@@ -16,7 +16,7 @@ from .utils import (
 
 
 class Organization(BaseModelWithUID):
-    name = models.CharField(max_length=255, unique=True)
+    name = models.CharField(max_length=255)
     slug = AutoSlugField(populate_from=get_organization_slug, unique=True)
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
