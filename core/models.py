@@ -208,9 +208,12 @@ class TwilioPhoneNumber(BaseModelWithUID):
     class Meta:
         verbose_name = "Twilio Phone Number"
         verbose_name_plural = "Twilio Phone Numbers"
-        ordering = ["-purchase_date"]
+        ordering = ["-created_at"]
         indexes = [
-            models.Index(fields=["user", "status"]),
+            models.Index(fields=["organization", "status"]),
             models.Index(fields=["phone_number"]),
             models.Index(fields=["twilio_sid"]),
         ]
+
+    def __str__(self):
+        return f"TwilioPhoneNumber(UID: {self.uid}, Phone: {self.phone_number}, Status: {self.status})"

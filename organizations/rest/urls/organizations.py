@@ -4,7 +4,7 @@ from ..views import organizations
 
 urlpatterns = [
     path(
-        "/me",
+        "me",
         organizations.OrganizationProfileView.as_view(),
         name="organization-profile",
     )

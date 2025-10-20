@@ -9,7 +9,7 @@ urlpatterns = [
         name="organization-user-invite",
     ),
     path(
-        "/accept/<uuid:token>",
+        "accept/<uuid:token>",
         organization_user_invite.OrganizationUserInviteAcceptAPIView.as_view(),
         name="invitation-accept",
     ),
