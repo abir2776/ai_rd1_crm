@@ -1,5 +1,5 @@
 """
-URL configuration for ai_rd1_crm project.
+URL configuration for swift_web_ai project.
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/5.2/topics/http/urls/
@@ -31,7 +31,7 @@ from rest_framework_simplejwt.views import (
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="AI_RD1_CRM API",
+        title="swift_web_ai API",
         default_version="main",
         license=openapi.License(name="BSD License"),
     ),
