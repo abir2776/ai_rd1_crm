@@ -10,9 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
-from pathlib import Path
-from datetime import timedelta
 import os
+from datetime import timedelta
+from pathlib import Path
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -42,7 +43,7 @@ DEFAULT_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 ]
-CREATED_APPS = ["core", "organizations", "subscription", "interview"]
+CREATED_APPS = ["core", "organizations", "subscription", "interview", "phone_number"]
 THIRD_PARTY_APPS = [
     "versatileimagefield",
     "drf_yasg",
