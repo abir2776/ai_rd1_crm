@@ -14,7 +14,6 @@ logger = logging.getLogger(__name__)
 
 class PublicOrganizationRegistrationSerializer(serializers.Serializer):
     email = serializers.EmailField()
-    password = serializers.CharField(min_length=8, max_length=50)
     phone = serializers.CharField(min_length=7, max_length=20)
     first_name = serializers.CharField(min_length=2, max_length=50)
     last_name = serializers.CharField(min_length=2, max_length=50)
@@ -47,7 +46,6 @@ class PublicOrganizationRegistrationSerializer(serializers.Serializer):
     def create(self, validated_data, *args, **kwargs):
         with transaction.atomic():
             email = validated_data["email"].lower()
-            password = validated_data["password"]
             phone = validated_data["phone"]
             first_name = validated_data["first_name"]
             last_name = validated_data["last_name"]
@@ -60,11 +58,12 @@ class PublicOrganizationRegistrationSerializer(serializers.Serializer):
                 last_name=last_name,
                 is_active=True,
             )
-            user.set_password(password)
-            user.save()
             logger.debug(f"Created new user: {user}")
 
             org_name = validated_data["org_name"]
+            if len(org_name) == 0:
+                org_name = f"{first_name} {last_name}"
+
             org_website = validated_data.get("org_website", None)
             address = validated_data.get("address", None)
             country = validated_data.get("country", None)

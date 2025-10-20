@@ -25,7 +25,10 @@ class UserVerificationAPIView(APIView):
     permission_classes = [AllowAny]
 
     def put(self, request, token):
+        data = request.data
+        password = data.get("password")
         user = User.objects.get(token=token)
+        user.set_password(password)
         user.is_verified = True
         user.save()
         return Response({"detail": "User Verified"}, status=status.HTTP_200_OK)
