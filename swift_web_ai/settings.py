@@ -177,3 +177,5 @@ SENDGRID_SANDBOX_MODE_IN_DEBUG = (
     os.getenv("SENDGRID_SANDBOX_MODE_IN_DEBUG", "False").lower() == "true"
 )
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL")
+
+FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")

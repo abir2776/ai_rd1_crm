@@ -8,6 +8,7 @@ from core.models import User
 from organizations.models import Organization, OrganizationUser
 from organizations.choices import OrganizationUserRole
 from common.tasks import send_email_task
+from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +91,7 @@ class PublicOrganizationRegistrationSerializer(serializers.Serializer):
             logger.debug(f"Added user: {user} to organization: {organization}")
             context = {
                 "username": user.get_full_name(),
-                "verification_link": f"http://example.com/verify",
+                "verification_link": f"{settings.FRONTEND_BASE_URL}/password/{user.token}",
                 "current_year": 2025,
             }
             send_email_task.delay(
