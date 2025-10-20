@@ -1,18 +1,21 @@
-from rest_framework.generics import ListCreateAPIView
-from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.views import APIView
+from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from core.models import User
+from organizations.choices import OrganizationUserRole
+from organizations.models import OrganizationUser, OrganizationUserInvitation
+from organizations.permissions import IsAdminOrOwner
 from organizations.rest.serializers.organization_user_invite import (
     OrganizationUserInvitationSerializer,
 )
-from organizations.models import OrganizationUserInvitation, OrganizationUser
-from core.models import User
-from organizations.choices import OrganizationUserRole
 
 
 class OrganizationUserInviteListCreateView(ListCreateAPIView):
     serializer_class = OrganizationUserInvitationSerializer
+    permission_classes = [IsAdminOrOwner]
 
     def get_queryset(self):
         user = self.request.user

@@ -1,14 +1,15 @@
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from organizations.permissions import IsAdminOrOwner
 from organizations.rest.serializers.organization_platform import (
     OrganizationPlatformTokenSerializer,
 )
 
 
 class ConnectPlatformView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminOrOwner]
 
     def post(self, request):
         serializer = OrganizationPlatformTokenSerializer(

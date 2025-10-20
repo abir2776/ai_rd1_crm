@@ -1,13 +1,16 @@
 from rest_framework.generics import ListAPIView
+
+from organizations.choices import OrganizationUserRole
+from organizations.models import OrganizationUser
+from organizations.permissions import IsAdminOrOwner
 from organizations.rest.serializers.organization_user import (
     OrganizationUserSerializer,
 )
-from organizations.models import OrganizationUser
-from organizations.choices import OrganizationUserRole
 
 
 class OrganizationUserListView(ListAPIView):
     serializer_class = OrganizationUserSerializer
+    permission_classes = [IsAdminOrOwner]
 
     def get_queryset(self):
         user = self.request.user
