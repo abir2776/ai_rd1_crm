@@ -506,7 +506,8 @@ def create_subaccount(request):
     """
     try:
         data = request.data
-        organization_id = data.get("organization_id")
+        user = request.user
+        organization_id = user.get_organization().id
         friendly_name = data.get("friendly_name", f"Customer {organization_id}")
 
         # Check if subaccount already exists
