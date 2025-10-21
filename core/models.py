@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class User(AbstractUser, BaseModelWithUID):
     email = models.EmailField(unique=True)
-    password = models.CharField(max_length=128, null=True, blank=True)
+    password = models.CharField(max_length=128, null=True, blank=True, editable=False)
     phone = PhoneNumberField(
         unique=True, db_index=True, verbose_name="Phone Number", blank=True, null=True
     )

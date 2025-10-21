@@ -18,7 +18,8 @@ class InterviewTaken(BaseModelWithUID):
     company_id = models.PositiveIntegerField()
     application_id = models.PositiveIntegerField()
     interview_type = models.ForeignKey(InterviewType, on_delete=models.CASCADE)
-    scheduled_at = models.DateTimeField()
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField()
 
     def __str__(self):
         return f"company_id: {self.company_id} - application_id: {self.application_id} - interview_type: {self.interview_type.name}"
