@@ -1,6 +1,7 @@
 import requests
-from rest_framework import serializers
 from django.utils import timezone
+from rest_framework import serializers
+
 from organizations.models import OrganizationPlatform, Platform
 
 
@@ -88,3 +89,20 @@ class OrganizationPlatformTokenSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"detail": f"An unexpected error occurred: {str(e)}"}
             )
+
+
+class PlatformSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Platform
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "description",
+            "base_url",
+            "client_id",
+            "auth_type",
+            "logo",
+            "status",
+            "redirect_uri",
+        ]

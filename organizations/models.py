@@ -49,6 +49,7 @@ class Platform(BaseModelWithUID):
     slug = AutoSlugField(populate_from=get_platform_slug, unique=True)
     description = models.TextField(blank=True, null=True)
     base_url = models.URLField(blank=True, null=True)
+    redirect_uri = models.URLField(blank=True, null=True)
     client_id = models.CharField(max_length=255, blank=True, null=True)
     client_secret = models.CharField(max_length=255, blank=True, null=True)
     auth_type = models.CharField(

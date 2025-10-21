@@ -1,11 +1,14 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.generics import ListAPIView
 
 from organizations.permissions import IsAdminOrOwner
 from organizations.rest.serializers.organization_platform import (
     OrganizationPlatformTokenSerializer,
+    PlatformSerializer,
 )
+from organizations.models import Platform
 
 
 class ConnectPlatformView(APIView):
@@ -36,3 +39,9 @@ class ConnectPlatformView(APIView):
             {"success": False, "errors": serializer.errors},
             status=status.HTTP_400_BAD_REQUEST,
         )
+
+
+class PlatformListView(ListAPIView):
+    permission_classes = [IsAdminOrOwner]
+    serializer_class = PlatformSerializer
+    queryset = Platform.objects.all()
