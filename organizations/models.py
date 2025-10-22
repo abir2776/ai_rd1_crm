@@ -52,6 +52,9 @@ class Platform(BaseModelWithUID):
     redirect_uri = models.URLField(blank=True, null=True)
     client_id = models.CharField(max_length=255, blank=True, null=True)
     client_secret = models.CharField(max_length=255, blank=True, null=True)
+    scope = models.CharField(max_length=255, blank=True, null=True)
+    response_type = models.CharField(max_length=255, blank=True, null=True)
+    state = models.CharField(max_length=255, blank=True, null=True)
     auth_type = models.CharField(
         max_length=20,
         choices=AuthTypeChoices.choices,

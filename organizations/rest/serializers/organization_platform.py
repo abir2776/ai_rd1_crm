@@ -105,4 +105,7 @@ class PlatformSerializer(serializers.ModelSerializer):
             "logo",
             "status",
             "redirect_uri",
+            "scope",
+            "response_type",
+            "state",
         ]
