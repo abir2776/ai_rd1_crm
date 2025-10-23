@@ -29,7 +29,7 @@ class ConnectPlatformView(APIView):
                         "platform": org_platform.platform.slug,
                         "platform_name": org_platform.platform.name,
                         "connected_at": org_platform.connected_at,
-                        "is_active": org_platform.is_active,
+                        "is_connected": org_platform.is_connected,
                     },
                 },
                 status=status.HTTP_201_CREATED,
