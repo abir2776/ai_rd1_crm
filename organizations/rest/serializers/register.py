@@ -59,6 +59,8 @@ class PublicOrganizationRegistrationSerializer(serializers.Serializer):
                 last_name=last_name,
                 is_active=True,
             )
+            user.set_unusable_password()
+            user.save()
             logger.debug(f"Created new user: {user}")
 
             org_name = validated_data["org_name"]
