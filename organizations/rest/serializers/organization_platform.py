@@ -92,6 +92,8 @@ class OrganizationPlatformTokenSerializer(serializers.Serializer):
 
 
 class PlatformSerializer(serializers.ModelSerializer):
+    is_connected = serializers.SerializerMethodField()
+
     class Meta:
         model = Platform
         fields = [
@@ -108,4 +110,15 @@ class PlatformSerializer(serializers.ModelSerializer):
             "scope",
             "response_type",
             "state",
+            "is_connected",
         ]
+
+    def get_is_connected(self, obj):
+        user = self.context.get("request").user
+        organization = user.get_organization()
+        organization_platform = obj.organization_connections.filter(
+            organization=organization
+        ).first()
+        if organization_platform:
+            return organization_platform.is_connected
+        return False
