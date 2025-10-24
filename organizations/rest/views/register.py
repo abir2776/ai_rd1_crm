@@ -3,8 +3,10 @@ from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from core.models import User
-
+import uuid
 from ..serializers import register
+from common.tasks import send_email_task
+from django.conf import settings
 
 
 class PublicOrganizationRegistration(APIView):
@@ -27,10 +29,44 @@ class UserVerificationAPIView(APIView):
     def put(self, request, token):
         data = request.data
         password = data.get("password")
-        user = User.objects.filter(token=token,is_verified=False).first()
+        user = User.objects.filter(token=token, is_verified=False).first()
         if user == None:
-            return Response({"detail": "User is already active or token is not valid"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"detail": "User not found"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         user.set_password(password)
         user.is_verified = True
         user.save()
         return Response({"detail": "User Verified"}, status=status.HTTP_200_OK)
+
+
+class UserForgetPasswordAPIView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        data = request.data
+        email = data.get("email")
+        user = User.objects.filter(email=email).first()
+        if user == None:
+            return Response(
+                {"detail": "There is not any active with this given email"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        user.token = uuid.uuid4()
+        user.is_verified = False
+        user.save()
+        context = {
+            "username": user.get_full_name(),
+            "verification_link": f"{settings.FRONTEND_BASE_URL}/password/{user.token}?email={email}",
+            "current_year": 2025,
+        }
+        send_email_task.delay(
+            subject="Reset your password",
+            recipient=email,
+            template_name="organization_register/reset_password.html",
+            context=context,
+        )
+        return Response(
+            {"detail": "Password reset email sent."}, status=status.HTTP_200_OK
+        )
