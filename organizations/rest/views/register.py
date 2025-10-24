@@ -1,12 +1,15 @@
+import uuid
+
+from django.conf import settings
 from rest_framework import status
-from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from core.models import User
-import uuid
-from ..serializers import register
+from rest_framework.views import APIView
+
 from common.tasks import send_email_task
-from django.conf import settings
+from core.models import User
+
+from ..serializers import register
 
 
 class PublicOrganizationRegistration(APIView):
@@ -28,7 +31,12 @@ class UserVerificationAPIView(APIView):
 
     def put(self, request, token):
         data = request.data
-        password = data.get("password")
+        password = data.get("password", "")
+        if len(password) == 0:
+            return Response(
+                {"detail": "You must give a password"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         user = User.objects.filter(token=token, is_verified=False).first()
         if user == None:
             return Response(
@@ -46,7 +54,12 @@ class UserForgetPasswordAPIView(APIView):
 
     def post(self, request):
         data = request.data
-        email = data.get("email")
+        email = data.get("email", "")
+        if len(email) == 0:
+            return Response(
+                {"detail": "You must give a email"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         user = User.objects.filter(email=email).first()
         if user == None:
             return Response(
