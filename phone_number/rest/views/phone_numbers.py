@@ -489,7 +489,7 @@ def _get_next_step(subaccount, address, approved_bundle, phone_numbers):
         return "Create and submit bundle for approval"
     if not phone_numbers.exists():
         return "Purchase phone number"
-    return "All steps completed"([IsAuthenticated, IsOwner])
+    return "All steps completed"
 
 
 @api_view(["POST"])

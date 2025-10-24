@@ -27,7 +27,9 @@ class UserVerificationAPIView(APIView):
     def put(self, request, token):
         data = request.data
         password = data.get("password")
-        user = User.objects.get(token=token)
+        user = User.objects.filter(token=token,is_verified=False).first()
+        if user == None:
+            return Response({"detail": "User is already active or token is not valid"}, status=status.HTTP_400_BAD_REQUEST)
         user.set_password(password)
         user.is_verified = True
         user.save()

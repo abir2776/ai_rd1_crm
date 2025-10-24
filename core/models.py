@@ -64,6 +64,11 @@ class User(AbstractUser, BaseModelWithUID):
     def __str__(self):
         return f"UID: {self.uid}, Phone: {self.phone}"
 
+    def save(self, *args, **kwargs):
+        if not self.token:
+            self.token = uuid.uuid4()
+        super().save(*args, **kwargs)
+
     def get_name(self):
         name = " ".join([self.first_name, self.last_name])
         return name.strip()

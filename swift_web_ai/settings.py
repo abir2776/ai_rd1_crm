@@ -121,8 +121,8 @@ SIMPLE_JWT = {
 }
 
 # Celery Configuration Options
-CELERY_BROKER_URL = "redis://localhost:6379/0"
-CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
+CELERY_BROKER_URL = "redis://redis:6379/0"
+CELERY_RESULT_BACKEND = "redis://redis:6379/0"
 
 # Optional settings
 CELERY_ACCEPT_CONTENT = ["json"]
@@ -185,3 +185,9 @@ FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
 ALLOWED_HOSTS = ["*"]
 CORS_ALLOW_ALL_ORIGINS = True
 APPEND_SLASH = False
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://api.swiftwave.ai",
+    "https://www.swiftwave.ai",
+    "http://api.swiftwave.ai",
+]

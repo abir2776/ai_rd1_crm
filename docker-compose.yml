@@ -1,6 +1,32 @@
 version: '3.8'
 
 services:
+  db:
+    image: postgres:15
+    container_name: django_postgres
+    environment:
+      POSTGRES_DB: swift_web_ai_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    # No ports section - internal communication only
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: django_redis
+    # No ports section - internal communication only
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   web:
     build:
       context: .
@@ -13,6 +39,11 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -26,10 +57,13 @@ services:
       - .:/app
     env_file:
       - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on:
-      - web
 
   celery_beat:
     build:
@@ -41,7 +75,13 @@ services:
       - .:/app
     env_file:
       - .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    depends_on:
-      - web
+
+volumes:
+  postgres_data:
