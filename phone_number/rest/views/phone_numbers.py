@@ -1,4 +1,5 @@
 # views.py
+import base64
 import os
 
 from django.http import JsonResponse
@@ -764,17 +765,24 @@ def upload_document(request):
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
 
-        # Create supporting document
+        # Read and encode file as base64
+        file_content = file.read()
+        file_base64 = base64.b64encode(file_content).decode("utf-8")
+
+        # Create supporting document with base64-encoded file
         document = client.numbers.v2.regulatory_compliance.supporting_documents.create(
             friendly_name=file.name,
             type=document_type,
-            attributes={"file": file.read()},
+            attributes={"file": file_base64, "mime_type": file.content_type},
         )
 
         # Assign document to bundle
         client.numbers.v2.regulatory_compliance.bundles(
             bundle.bundle_sid
         ).item_assignments.create(object_sid=document.sid)
+
+        # Reset file pointer before saving to database
+        file.seek(0)
 
         # Save to database
         db_document = SupportingDocument.objects.create(
