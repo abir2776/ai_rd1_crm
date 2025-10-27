@@ -1,10 +1,11 @@
 # views.py
-import base64
 import os
 
+import requests
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
+from requests.auth import HTTPBasicAuth
 from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -760,26 +761,43 @@ def upload_document(request):
         # Get subaccount
         subaccount = bundle.subaccount
 
-        # Upload document to Twilio
+        # Upload document to Twilio using direct HTTP API
+        url = "https://numbers.twilio.com/v2/RegulatoryCompliance/SupportingDocuments"
+
+        # Prepare the multipart form data
+        files = {"File": (file.name, file.read(), file.content_type)}
+
+        data = {"FriendlyName": file.name, "Type": document_type}
+
+        # Make the request with basic auth
+        response = requests.post(
+            url,
+            auth=HTTPBasicAuth(
+                subaccount.twilio_account_sid, subaccount.twilio_auth_token
+            ),
+            data=data,
+            files=files,
+        )
+
+        if response.status_code not in [200, 201]:
+            return JsonResponse(
+                {
+                    "error": f"Twilio error: {response.json().get('message', 'Unknown error')}"
+                },
+                status=400,
+            )
+
+        document_data = response.json()
+        document_sid = document_data.get("sid")
+
+        # Assign document to bundle using the SDK
         client = get_twilio_client(
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
 
-        # Read file content
-        file_content = file.read()
-
-        # Create supporting document with file upload
-        # Twilio expects the file as a tuple: (filename, file_content, mime_type)
-        document = client.numbers.v2.regulatory_compliance.supporting_documents.create(
-            friendly_name=file.name,
-            type=document_type,
-            file=(file.name, file_content, file.content_type),
-        )
-
-        # Assign document to bundle
         client.numbers.v2.regulatory_compliance.bundles(
             bundle.bundle_sid
-        ).item_assignments.create(object_sid=document.sid)
+        ).item_assignments.create(object_sid=document_sid)
 
         # Reset file pointer before saving to database
         file.seek(0)
@@ -788,7 +806,7 @@ def upload_document(request):
         db_document = SupportingDocument.objects.create(
             organization=organization,
             bundle=bundle,
-            document_sid=document.sid,
+            document_sid=document_sid,
             document_type=document_type,
             friendly_name=file.name,
             file=file,
@@ -800,7 +818,7 @@ def upload_document(request):
                 "success": True,
                 "document": {
                     "id": str(db_document.uid),
-                    "document_sid": document.sid,
+                    "document_sid": document_sid,
                     "document_type": document_type,
                     "filename": file.name,
                     "status": "uploaded",
