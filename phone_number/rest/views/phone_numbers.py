@@ -761,11 +761,14 @@ def upload_document(request):
         # Get subaccount
         subaccount = bundle.subaccount
 
+        # Read file content once
+        file_content = file.read()
+
         # Upload document to Twilio using direct HTTP API
         url = "https://numbers.twilio.com/v2/RegulatoryCompliance/SupportingDocuments"
 
         # Prepare the multipart form data
-        files = {"File": (file.name, file.read(), file.content_type)}
+        files = {"File": (file.name, file_content, file.content_type)}
 
         data = {"FriendlyName": file.name, "Type": document_type}
 
@@ -780,12 +783,14 @@ def upload_document(request):
         )
 
         if response.status_code not in [200, 201]:
-            return JsonResponse(
-                {
-                    "error": f"Twilio error: {response.json().get('message', 'Unknown error')}"
-                },
-                status=400,
+            error_message = (
+                response.json().get("message", "Unknown error")
+                if response.headers.get("content-type", "").startswith(
+                    "application/json"
+                )
+                else response.text
             )
+            return JsonResponse({"error": f"Twilio error: {error_message}"}, status=400)
 
         document_data = response.json()
         document_sid = document_data.get("sid")
@@ -799,18 +804,15 @@ def upload_document(request):
             bundle.bundle_sid
         ).item_assignments.create(object_sid=document_sid)
 
-        # Reset file pointer before saving to database
-        file.seek(0)
-
-        # Save to database
+        # Save to database WITHOUT the file (it's already on Twilio)
         db_document = SupportingDocument.objects.create(
             organization=organization,
             bundle=bundle,
             document_sid=document_sid,
             document_type=document_type,
             friendly_name=file.name,
-            file=file,
             mime_type=file.content_type,
+            # Don't save file field - it's already on Twilio
         )
 
         return JsonResponse(
