@@ -765,15 +765,15 @@ def upload_document(request):
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
 
-        # Read and encode file as base64
+        # Read file content
         file_content = file.read()
-        file_base64 = base64.b64encode(file_content).decode("utf-8")
 
-        # Create supporting document with base64-encoded file
+        # Create supporting document with file upload
+        # Twilio expects the file as a tuple: (filename, file_content, mime_type)
         document = client.numbers.v2.regulatory_compliance.supporting_documents.create(
             friendly_name=file.name,
             type=document_type,
-            attributes={"file": file_base64, "mime_type": file.content_type},
+            file=(file.name, file_content, file.content_type),
         )
 
         # Assign document to bundle
