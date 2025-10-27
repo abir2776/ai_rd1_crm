@@ -4,18 +4,24 @@ import os
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework import generics
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from twilio.base.exceptions import TwilioRestException
 from twilio.rest import Client
 
-from organizations.permissions import IsOwner
 from phone_number.models import (
     RegulatoryAddress,
     RegulatoryBundle,
     SupportingDocument,
     TwilioPhoneNumber,
     TwilioSubAccount,
+)
+from phone_number.rest.serializers.phone_numbers import (
+    PhoneNumberSerializer,
+    RegulatoryAddressSerializer,
+    RegulatoryBundleSerializer,
+    SupportingDocumentSerializer,
 )
 
 # Parent account credentials
@@ -669,12 +675,13 @@ def create_bundle(request):
         client = get_twilio_client(
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
-
+        callback_url = (
+            "https://api.swiftwave.ai/api/v1/phone_number/webhooks/bundle-status"
+        )
         bundle = client.numbers.v2.regulatory_compliance.bundles.create(
             friendly_name=data.get("friendly_name"),
             email=data.get("email"),
-            status_callback=data.get("status_callback_url", ""),
-            regulation_sid=data.get("regulation_sid", ""),
+            status_callback=callback_url,
             iso_country=data.get("iso_country"),
             number_type=data.get("number_type"),
             end_user_type=data.get("end_user_type", "business"),
@@ -921,3 +928,23 @@ def search_phone_numbers(request):
         )
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
+
+
+class RegulatoryBundleListView(generics.ListAPIView):
+    queryset = RegulatoryBundle.objects.filter()
+    serializer_class = RegulatoryBundleSerializer
+
+
+class RegulatoryAddressListView(generics.ListAPIView):
+    queryset = RegulatoryAddress.objects.filter()
+    serializer_class = RegulatoryAddressSerializer
+
+
+class PhoneNumberListView(generics.ListAPIView):
+    queryset = TwilioPhoneNumber.objects.filter()
+    serializer_class = PhoneNumberSerializer
+
+
+class SupportingDocumentListView(generics.ListAPIView):
+    queryset = SupportingDocument.objects.filter()
+    serializer_class = SupportingDocumentSerializer

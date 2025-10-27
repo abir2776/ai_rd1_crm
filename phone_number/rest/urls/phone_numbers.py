@@ -4,6 +4,21 @@ from django.urls import path
 from ..views import phone_numbers
 
 urlpatterns = [
+    path("", phone_numbers.PhoneNumberListView.as_view(), name="phone_number_list"),
+    path(
+        "documents",
+        phone_numbers.SupportingDocumentListView.as_view(),
+        name="supporting_document_list",
+    ),
+    path(
+        "addresses",
+        phone_numbers.RegulatoryAddressListView.as_view(),
+        name="address_list",
+    ),
+    # Bundle Management
+    path(
+        "bundles", phone_numbers.RegulatoryBundleListView.as_view(), name="bundle_list"
+    ),
     # Subaccount Management
     path(
         "subaccounts/create", phone_numbers.create_subaccount, name="create_subaccount"
