@@ -515,19 +515,20 @@ def assign_address_to_bundle(request):
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
 
-        # 1️⃣ Find the regulation SID for the bundle's country
-        regulations = client.regulatory_compliance.regulations.list(
+        # ✅ 1️⃣ Get the regulation SID for this address (country)
+        regulations = client.numbers.v2.regulatory_compliance.regulations.list(
             iso_country=address.iso_country, limit=1
         )
         if not regulations:
             return JsonResponse(
-                {"error": "No regulation found for country"}, status=400
+                {"error": f"No regulations found for country {address.iso_country}"},
+                status=400,
             )
 
         regulation_sid = regulations[0].sid
 
-        # 2️⃣ Assign the address to the bundle via the regulatory_compliance API
-        bundle_item = client.regulatory_compliance.bundles(
+        # ✅ 2️⃣ Attach the verified address SID to the bundle
+        bundle_item = client.numbers.v2.regulatory_compliance.bundles(
             bundle.bundle_sid
         ).bundle_items.create(
             regulation_sid=regulation_sid, object_sid=address.address_sid
@@ -544,7 +545,11 @@ def assign_address_to_bundle(request):
     except TwilioRestException as e:
         logger.error(f"Twilio error assigning address: {e.msg}")
         return JsonResponse(
-            {"error": f"Twilio error: {e.msg}", "code": e.code},
+            {
+                "error": f"Twilio error: {e.msg}",
+                "code": e.code,
+                "address_sid": address.address_sid,
+            },
             status=400,
         )
     except Exception as e:
