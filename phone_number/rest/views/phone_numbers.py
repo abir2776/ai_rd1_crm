@@ -1,4 +1,5 @@
 # views.py
+import json
 import logging
 import os
 
@@ -553,6 +554,7 @@ def upload_document(request):
     POST /api/twilio/documents/upload/
     Form Data:
     - bundle_id: UUID of the bundle
+    - address_id: UUID of address
     - document_type: Type of document (e.g., "passport", "business_license")
     - file: Document file
     """
@@ -590,7 +592,7 @@ def upload_document(request):
         data = {
             "FriendlyName": file.name,
             "Type": document_type,
-            "Attributes": {"address_sids": [address.address_sid]},
+            "Attributes": json.dumps({"address_sids": [address.address_sid]}),
         }
 
         # Make the request with basic auth
