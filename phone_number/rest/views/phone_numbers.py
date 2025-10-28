@@ -197,11 +197,11 @@ def create_end_user(request):
                         "business_regions_of_operation", "US"
                     ),
                     # Business Address (REQUIRED)
-                    "street": data.get("street"),
-                    "city": data.get("city"),
-                    "region": data.get("region"),  # State/Province code (e.g., "CA")
-                    "postal_code": data.get("postal_code"),
-                    "iso_country": data.get("iso_country", "US"),
+                    # "street": data.get("street"),
+                    # "city": data.get("city"),
+                    # "region": data.get("region"),  # State/Province code (e.g., "CA")
+                    # "postal_code": data.get("postal_code"),
+                    # "iso_country": data.get("iso_country", "US"),
                     # Is Subassigned (CRITICAL - Required by Twilio)
                     "is_subassigned": data.get("is_subassigned", False),
                 }
