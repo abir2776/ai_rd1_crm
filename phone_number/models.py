@@ -7,11 +7,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 from common.choices import Status
 from common.models import BaseModelWithUID
 
-from .choices import (
-    AddressStatus,
-    BundleStatus,
-    PhoneNumberStatus,
-)
+from .choices import AddressStatus, BundleStatus, PhoneNumberStatus, EndUserType
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +57,117 @@ class TwilioSubAccount(BaseModelWithUID):
         return f"{self.friendly_name} ({self.twilio_account_sid})"
 
 
+class EndUser(BaseModelWithUID):
+    """
+    End User information for regulatory compliance
+    """
+
+    organization = models.ForeignKey(
+        "organizations.Organization",
+        on_delete=models.CASCADE,
+        related_name="end_users",
+    )
+
+    subaccount = models.ForeignKey(
+        TwilioSubAccount,
+        on_delete=models.CASCADE,
+        related_name="end_users",
+    )
+
+    end_user_sid = models.CharField(
+        max_length=34,
+        unique=True,
+        db_index=True,
+        help_text="Twilio End User SID (starts with IT)",
+    )
+
+    friendly_name = models.CharField(
+        max_length=255,
+        help_text="Friendly name for the end user",
+    )
+
+    end_user_type = models.CharField(
+        max_length=20,
+        choices=EndUserType.choices,
+    )
+
+    # Business Information (required for business type)
+    business_name = models.CharField(
+        max_length=255,
+        blank=True,
+        help_text="Legal business name",
+    )
+
+    business_registration_number = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Business registration/tax ID number",
+    )
+
+    business_registration_identifier = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Registration authority (e.g., EIN, VAT, ABN)",
+    )
+
+    business_website = models.URLField(
+        blank=True,
+        help_text="Business website URL",
+    )
+
+    business_identity = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Business classification/industry",
+    )
+
+    # Authorized Representative Information
+    first_name = models.CharField(
+        max_length=100,
+        help_text="First name of authorized representative",
+    )
+
+    last_name = models.CharField(
+        max_length=100,
+        help_text="Last name of authorized representative",
+    )
+
+    email = models.EmailField(
+        help_text="Email of authorized representative",
+    )
+
+    phone_number = PhoneNumberField(
+        help_text="Phone number of authorized representative",
+    )
+
+    # Additional Information
+    is_subassigned = models.BooleanField(
+        default=False,
+        help_text="Whether number is assigned to end customer",
+    )
+
+    comments = models.TextField(
+        blank=True,
+        help_text="Optional comments",
+    )
+
+    status = models.CharField(
+        max_length=20,
+        default="active",
+    )
+
+    twilio_metadata = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "End User"
+        verbose_name_plural = "End Users"
+        db_table = "end_users"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.friendly_name} - {self.end_user_type}"
+
+
 class RegulatoryBundle(BaseModelWithUID):
     """
     Regulatory Bundle (identity verification) for phone number compliance
@@ -76,6 +183,15 @@ class RegulatoryBundle(BaseModelWithUID):
         TwilioSubAccount,
         on_delete=models.CASCADE,
         related_name="bundles",
+    )
+
+    end_user = models.ForeignKey(
+        EndUser,
+        on_delete=models.CASCADE,
+        related_name="bundles",
+        null=True,
+        blank=True,
+        help_text="Associated end user information",
     )
 
     bundle_sid = models.CharField(
@@ -403,6 +519,7 @@ class SupportingDocument(BaseModelWithUID):
     file = models.FileField(
         upload_to="regulatory_documents/%Y/%m/",
         help_text="Uploaded document file",
+        blank=True,
     )
 
     mime_type = models.CharField(max_length=100, blank=True)
