@@ -518,7 +518,7 @@ def assign_address_to_bundle(request):
         # ✅ Assign the address to the bundle
         assignment = client.numbers.v2.regulatory_compliance.bundles(
             bundle.bundle_sid
-        ).item_assignments.create(object_sid=address.address_sid)
+        ).item_assignments.create(object_sid="AD7151923db2f2d996b0936b46bdbb8aae")
 
         return JsonResponse(
             {
