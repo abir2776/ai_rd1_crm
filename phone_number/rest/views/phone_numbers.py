@@ -132,11 +132,7 @@ def create_end_user(request):
         "first_name": "John",
         "last_name": "Doe",
         "email": "john@mycompany.com",
-        "phone_number": "+14155551234",
-
-        # Additional:
-        "is_subassigned": false,
-        "comments": "Optional comments"
+        "phone_number": "+14155551234"
     }
     """
     try:
@@ -179,13 +175,6 @@ def create_end_user(request):
                     ),
                 }
             )
-
-        # Optional fields
-        if data.get("is_subassigned") is not None:
-            attributes["is_subassigned"] = data.get("is_subassigned")
-
-        if data.get("comments"):
-            attributes["comments"] = data.get("comments")
 
         # Create end user in Twilio
         end_user = client.numbers.v2.regulatory_compliance.end_users.create(
@@ -237,7 +226,7 @@ def create_end_user(request):
     except TwilioRestException as e:
         logger.error(f"Twilio error creating end user: {e.msg}")
         return JsonResponse(
-            {"error": f"Twilio error: {e.msg}", "code": e.code, "deatails": str(e)},
+            {"error": f"Twilio error: {e.msg}", "code": e.code},
             status=400,
         )
     except Exception as e:
