@@ -21,6 +21,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "logo",
             "name",
             "status",
+            "first_name",
+            "last_name",
         ]
         read_only_fields = ["id", "slug", "logo", "status"]
 
