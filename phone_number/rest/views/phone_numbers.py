@@ -237,7 +237,8 @@ def create_end_user(request):
     except TwilioRestException as e:
         logger.error(f"Twilio error creating end user: {e.msg}")
         return JsonResponse(
-            {"error": f"Twilio error: {e.msg}", "code": e.code}, status=400
+            {"error": f"Twilio error: {e.msg}", "code": e.code, "full_error": e},
+            status=400,
         )
     except Exception as e:
         logger.error(f"Error creating end user: {str(e)}")
