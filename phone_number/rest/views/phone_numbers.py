@@ -560,6 +560,7 @@ def upload_document(request):
         user = request.user
         organization = user.get_organization()
         bundle_id = request.data.get("bundle_id")
+        address_id = request.data.get("address_id")
         document_type = request.data.get("document_type")
         file = request.FILES.get("file")
 
@@ -569,6 +570,9 @@ def upload_document(request):
         # Get bundle
         bundle = get_object_or_404(
             RegulatoryBundle, uid=bundle_id, organization=organization
+        )
+        address = get_object_or_404(
+            RegulatoryAddress, uid=address_id, organization=organization
         )
 
         # Get subaccount
@@ -583,7 +587,11 @@ def upload_document(request):
         # Prepare the multipart form data
         files = {"File": (file.name, file_content, file.content_type)}
 
-        data = {"FriendlyName": file.name, "Type": document_type}
+        data = {
+            "FriendlyName": file.name,
+            "Type": document_type,
+            "Attributes": {"address_sids": [address.address_sid]},
+        }
 
         # Make the request with basic auth
         response = requests.post(
