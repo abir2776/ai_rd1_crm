@@ -515,30 +515,16 @@ def assign_address_to_bundle(request):
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
 
-        # ✅ 1️⃣ Get the regulation SID for this address (country)
-        regulations = client.numbers.v2.regulatory_compliance.regulations.list(
-            iso_country=address.iso_country, limit=1
-        )
-        if not regulations:
-            return JsonResponse(
-                {"error": f"No regulations found for country {address.iso_country}"},
-                status=400,
-            )
-
-        regulation_sid = regulations[0].sid
-
-        # ✅ 2️⃣ Attach the verified address SID to the bundle
-        bundle_item = client.numbers.v2.regulatory_compliance.bundles(
+        # ✅ Assign the address to the bundle
+        assignment = client.numbers.v2.regulatory_compliance.bundles(
             bundle.bundle_sid
-        ).bundle_items.create(
-            regulation_sid=regulation_sid, object_sid=address.address_sid
-        )
+        ).item_assignments.create(object_sid=address.address_sid)
 
         return JsonResponse(
             {
                 "success": True,
-                "message": "Address successfully assigned to bundle",
-                "bundle_item_sid": bundle_item.sid,
+                "message": "Address assigned to bundle successfully",
+                "assignment_sid": assignment.sid,
             }
         )
 
