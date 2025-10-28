@@ -538,8 +538,11 @@ def assign_address_to_bundle(request):
     except TwilioRestException as e:
         logger.error(f"Twilio error assigning address: {e.msg}")
         return JsonResponse(
-            {"error": f"Twilio error: {e.msg}", "code": e.code},
-            {address.address_sid},
+            {
+                "error": f"Twilio error: {e.msg}",
+                "code": e.code,
+                "address_sid": address.address_sid,
+            },
             status=400,
         )
     except Exception as e:
