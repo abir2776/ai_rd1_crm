@@ -121,18 +121,31 @@ def create_end_user(request):
         "friendly_name": "My Company LLC",
         "end_user_type": "business",  # or "individual"
 
-        # For business type:
+        # For business type (ALL REQUIRED):
         "business_name": "My Company LLC",
         "business_registration_number": "123456789",
         "business_registration_identifier": "EIN",  # EIN, VAT, ABN, etc.
+        "business_registration_authority": "IRS",  # Required field
         "business_website": "https://mycompany.com",
         "business_identity": "direct_customer",
+        "business_industry": "Technology",  # Business classification
+        "business_regions_of_operation": "US",  # Where business operates
+
+        # Business Address (REQUIRED):
+        "street": "123 Main Street",
+        "city": "San Francisco",
+        "region": "CA",  # State/Province
+        "postal_code": "94102",
+        "iso_country": "US",
 
         # Authorized representative:
         "first_name": "John",
         "last_name": "Doe",
         "email": "john@mycompany.com",
-        "phone_number": "+14155551234"
+        "phone_number": "+14155551234",
+
+        # Critical for bundle compliance
+        "is_subassigned": false  # true if number will be resold/assigned to another customer
     }
     """
     try:
@@ -160,6 +173,7 @@ def create_end_user(request):
 
         # Add business-specific attributes
         if end_user_type == "business":
+            # FIXED: Added ALL required fields including business address and is_subassigned
             attributes.update(
                 {
                     "business_name": data.get("business_name"),
@@ -169,10 +183,27 @@ def create_end_user(request):
                     "business_registration_identifier": data.get(
                         "business_registration_identifier", "EIN"
                     ),
+                    # Registration Authority (Required)
+                    "business_registration_authority": data.get(
+                        "business_registration_authority", "IRS"
+                    ),
                     "business_website": data.get("business_website"),
                     "business_identity": data.get(
                         "business_identity", "direct_customer"
                     ),
+                    # Business Classification (Required for some regions)
+                    "business_industry": data.get("business_industry", "Technology"),
+                    "business_regions_of_operation": data.get(
+                        "business_regions_of_operation", "US"
+                    ),
+                    # Business Address (REQUIRED)
+                    "street": data.get("street"),
+                    "city": data.get("city"),
+                    "region": data.get("region"),  # State/Province code (e.g., "CA")
+                    "postal_code": data.get("postal_code"),
+                    "iso_country": data.get("iso_country", "US"),
+                    # Is Subassigned (CRITICAL - Required by Twilio)
+                    "is_subassigned": data.get("is_subassigned", False),
                 }
             )
 
@@ -185,7 +216,7 @@ def create_end_user(request):
             attributes=attributes,
         )
 
-        # Save to database
+        # Save to database with all fields
         db_end_user = EndUser.objects.create(
             organization=organization,
             subaccount=subaccount,
@@ -205,7 +236,7 @@ def create_end_user(request):
             last_name=data.get("last_name"),
             email=data.get("email"),
             phone_number=data.get("phone_number"),
-            is_subassigned=data.get("is_subassigned", False),
+            is_subassigned=data.get("is_subassigned", False),  # FIXED: Use from request
             comments=data.get("comments", ""),
         )
 
@@ -217,6 +248,7 @@ def create_end_user(request):
                     "end_user_sid": end_user.sid,
                     "friendly_name": db_end_user.friendly_name,
                     "type": end_user_type,
+                    "is_subassigned": db_end_user.is_subassigned,
                     "status": "created",
                 },
             },
