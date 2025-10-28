@@ -192,10 +192,10 @@ def create_end_user(request):
                         "business_identity", "direct_customer"
                     ),
                     # Business Classification (Required for some regions)
-                    "business_industry": data.get("business_industry", "Technology"),
-                    "business_regions_of_operation": data.get(
-                        "business_regions_of_operation", "US"
-                    ),
+                    # "business_industry": data.get("business_industry", "Technology"),
+                    # "business_regions_of_operation": data.get(
+                    #     "business_regions_of_operation", "US"
+                    # ),
                     # Business Address (REQUIRED)
                     # "street": data.get("street"),
                     # "city": data.get("city"),
