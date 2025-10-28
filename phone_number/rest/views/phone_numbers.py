@@ -493,13 +493,7 @@ def assign_end_user_to_bundle(request):
 @permission_classes([IsAuthenticated])
 def assign_address_to_bundle(request):
     """
-    Assign an Address to a Bundle
-
-    POST /api/twilio/bundles/assign-address/
-    {
-        "bundle_id": "uuid",
-        "address_id": "uuid"
-    }
+    Assign a verified Address to a Regulatory Bundle in Twilio.
     """
     try:
         user = request.user
@@ -517,32 +511,40 @@ def assign_address_to_bundle(request):
         )
 
         subaccount = bundle.subaccount
-
-        # Assign address to bundle via Twilio API
         client = get_twilio_client(
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
 
-        assignment = client.numbers.v2.regulatory_compliance.bundles(
+        # 1️⃣ Find the regulation SID for the bundle's country
+        regulations = client.regulatory_compliance.regulations.list(
+            iso_country=address.iso_country, limit=1
+        )
+        if not regulations:
+            return JsonResponse(
+                {"error": "No regulation found for country"}, status=400
+            )
+
+        regulation_sid = regulations[0].sid
+
+        # 2️⃣ Assign the address to the bundle via the regulatory_compliance API
+        bundle_item = client.regulatory_compliance.bundles(
             bundle.bundle_sid
-        ).item_assignments.create(object_sid=address.address_sid)
+        ).bundle_items.create(
+            regulation_sid=regulation_sid, object_sid=address.address_sid
+        )
 
         return JsonResponse(
             {
                 "success": True,
-                "message": "Address assigned to bundle successfully",
-                "assignment_sid": assignment.sid,
+                "message": "Address successfully assigned to bundle",
+                "bundle_item_sid": bundle_item.sid,
             }
         )
 
     except TwilioRestException as e:
         logger.error(f"Twilio error assigning address: {e.msg}")
         return JsonResponse(
-            {
-                "error": f"Twilio error: {e.msg}",
-                "code": e.code,
-                "address_sid": address.address_sid,
-            },
+            {"error": f"Twilio error: {e.msg}", "code": e.code},
             status=400,
         )
     except Exception as e:
