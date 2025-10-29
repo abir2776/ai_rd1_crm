@@ -6,6 +6,7 @@ from ..views import phone_numbers
 urlpatterns = [
     # List Views
     path("", phone_numbers.PhoneNumberListView.as_view(), name="phone_number_list"),
+    path("countries", phone_numbers.countries, name="countries"),
     path(
         "documents",
         phone_numbers.SupportingDocumentListView.as_view(),

@@ -28,6 +28,8 @@ from phone_number.rest.serializers.phone_numbers import (
     RegulatoryBundleSerializer,
     SupportingDocumentSerializer,
 )
+import requests
+from django.http import JsonResponse, HttpResponse
 
 logger = logging.getLogger(__name__)
 
@@ -1439,3 +1441,30 @@ class SupportingDocumentListView(generics.ListAPIView):
     def get_queryset(self):
         organization = self.request.user.get_organization()
         return SupportingDocument.objects.filter(organization=organization)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def countries(request):
+    user = request.user
+    organization = user.get_organization()
+    subaccount = get_object_or_404(TwilioSubAccount, organization=organization)
+    url = (
+        "https://api.twilio.com/2010-04-01/Accounts/"
+        f"{subaccount.twilio_account_sid}/AvailablePhoneNumbers.json"
+    )
+    auth = (subaccount.twilio_account_sid, subaccount.twilio_auth_token)
+
+    try:
+        resp = requests.get(url, auth=auth, timeout=10)
+    except requests.RequestException as e:
+        return HttpResponse(f"Error fetching from Twilio: {e}", status=502)
+
+    if resp.status_code != 200:
+        return HttpResponse(
+            f"Twilio responded with status {resp.status_code}: {resp.text}",
+            status=resp.status_code,
+        )
+
+    data = resp.json()
+    return JsonResponse(data, safe=False)

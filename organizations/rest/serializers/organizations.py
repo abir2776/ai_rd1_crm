@@ -1,11 +1,12 @@
 from rest_framework import serializers
-
 from organizations.models import Organization
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
     first_name = serializers.SerializerMethodField()
     last_name = serializers.SerializerMethodField()
+    first_name_input = serializers.CharField(write_only=True, required=False)
+    last_name_input = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = Organization
@@ -23,6 +24,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
             "status",
             "first_name",
             "last_name",
+            "first_name_input",
+            "last_name_input",
         ]
         read_only_fields = ["id", "slug", "logo", "status"]
 
@@ -31,3 +34,22 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
     def get_last_name(self, obj):
         return self.context["request"].user.last_name
+
+    def update(self, instance, validated_data):
+        first_name = validated_data.pop("first_name_input", None)
+        last_name = validated_data.pop("last_name_input", None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        user = self.context["request"].user
+        updated = False
+        if first_name is not None:
+            user.first_name = first_name
+            updated = True
+        if last_name is not None:
+            user.last_name = last_name
+            updated = True
+        if updated:
+            user.save()
+
+        return instance
