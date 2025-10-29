@@ -174,7 +174,6 @@ def create_end_user(request):
                     "business_identity": data.get(
                         "business_identity", "direct_customer"
                     ),
-                    "is_subassigned": True,
                 }
             )
 
