@@ -122,7 +122,6 @@ def create_end_user(request):
     POST /api/twilio/end-users/create/
     {
         "friendly_name": "My Company LLC",
-        "end_user_type": "business",  # or "individual"
 
         # For business type:
         "business_name": "My Company LLC",
@@ -153,7 +152,7 @@ def create_end_user(request):
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
 
-        end_user_type = data.get("end_user_type", "business")
+        end_user_type = "business"
 
         # Prepare attributes based on end user type
         attributes = {
@@ -367,8 +366,7 @@ def create_bundle(request):
         "iso_country": "US",
         "number_type": "local",
         "end_user_type": "business",
-        "email": "customer@example.com",
-        "end_user_id": "uuid"  # Optional: pre-created end user
+        "email": "customer@example.com"
     }
     """
     try:
@@ -402,7 +400,7 @@ def create_bundle(request):
             status_callback=callback_url,
             iso_country=data.get("iso_country"),
             number_type=data.get("number_type"),
-            end_user_type=data.get("end_user_type", "business"),
+            end_user_type="business",
         )
 
         # Save to database
@@ -414,7 +412,7 @@ def create_bundle(request):
             friendly_name=data.get("friendly_name"),
             iso_country=data.get("iso_country"),
             number_type=data.get("number_type"),
-            end_user_type=data.get("end_user_type", "business"),
+            end_user_type="business",
             email=data.get("email"),
             status="DRAFT",
             status_callback_url=callback_url,
@@ -1449,6 +1447,7 @@ def countries(request):
     user = request.user
     organization = user.get_organization()
     subaccount = get_object_or_404(TwilioSubAccount, organization=organization)
+
     url = (
         "https://api.twilio.com/2010-04-01/Accounts/"
         f"{subaccount.twilio_account_sid}/AvailablePhoneNumbers.json"
@@ -1457,14 +1456,21 @@ def countries(request):
 
     try:
         resp = requests.get(url, auth=auth, timeout=10)
+        resp.raise_for_status()
     except requests.RequestException as e:
         return HttpResponse(f"Error fetching from Twilio: {e}", status=502)
 
-    if resp.status_code != 200:
-        return HttpResponse(
-            f"Twilio responded with status {resp.status_code}: {resp.text}",
-            status=resp.status_code,
-        )
-
     data = resp.json()
-    return JsonResponse(data, safe=False)
+    countries = data.get("countries", [])
+
+    # --- 🔍 Search Support ---
+    search_query = request.GET.get("search", "").strip().lower()
+    if search_query:
+        countries = [
+            c
+            for c in countries
+            if search_query in c.get("country", "").lower()
+            or search_query in c.get("country_code", "").lower()
+        ]
+
+    return JsonResponse({"countries": countries}, safe=False)
