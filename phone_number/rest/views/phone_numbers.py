@@ -127,19 +127,21 @@ def create_end_user(request):
         "business_registration_number": "123456789",
         "business_registration_identifier": "EIN",  # EIN, VAT, ABN, etc.
         "business_website": "https://mycompany.com",
-        "business_identity": "direct_customer",
 
         # Authorized representative:
         "first_name": "John",
         "last_name": "Doe",
         "email": "john@mycompany.com",
-        "phone_number": "+14155551234"
+        "phone_number": "+14155551234",
+
+        "bundle_id": UUID of bundle
     }
     """
     try:
         user = request.user
         data = request.data
         organization = user.get_organization()
+        bundle_id = data.get("bundle_id")
 
         # Get user's subaccount
         subaccount = get_object_or_404(TwilioSubAccount, organization=organization)
@@ -171,12 +173,8 @@ def create_end_user(request):
                         "business_registration_identifier", "EIN"
                     ),
                     "business_website": data.get("business_website"),
-                    "business_identity": data.get(
-                        "business_identity", "direct_customer"
-                    ),
-                    "registration_authority": "Companies House",
-                    "is_number_assigned_to_end_customer": True,
-                    "business_address_sid": "f926d485-3cde-4240-98f5-6e3f2b80c001",
+                    "business_identity": "DIRECT_CUSTOMER",
+                    "is_subassigned": "YES",
                 }
             )
 
@@ -188,6 +186,12 @@ def create_end_user(request):
             type=end_user_type,
             attributes=attributes,
         )
+        bundle = get_object_or_404(
+            RegulatoryBundle, uid=bundle_id, organization=organization
+        )
+        client.numbers.v2.regulatory_compliance.bundles(
+            bundle.bundle_sid
+        ).item_assignments.create(object_sid=end_user.sid)
 
         # Save to database
         db_end_user = EndUser.objects.create(
@@ -256,13 +260,16 @@ def create_address(request):
         "city": "San Francisco",
         "region": "CA",
         "postal_code": "94102",
-        "iso_country": "US"
+        "iso_country": "US",
+
+        "bundle_id": UUID of bundle
     }
     """
     try:
         user = request.user
         data = request.data
         organization = user.get_organization()
+        bundle_id = data.get("bundle_id")
 
         # Get user's subaccount
         subaccount = get_object_or_404(TwilioSubAccount, organization=organization)
@@ -282,7 +289,21 @@ def create_address(request):
             street_secondary=data.get("street_secondary", ""),
             friendly_name=data.get("friendly_name", "Primary Address"),
         )
-
+        bundle = get_object_or_404(
+            RegulatoryBundle, uid=bundle_id, organization=organization
+        )
+        supporting_doc = (
+            client.numbers.v2.regulatory_compliance.supporting_documents.create(
+                friendly_name=bundle.friendly_name,
+                type="business_address",
+                attributes={
+                    "address_sids": [address.sid],
+                },
+            )
+        )
+        client.numbers.v2.regulatory_compliance.bundles(
+            bundle.bundle_sid
+        ).item_assignments.create(object_sid=supporting_doc.sid)
         # Save to database
         db_address = RegulatoryAddress.objects.create(
             organization=organization,
