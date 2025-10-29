@@ -174,6 +174,9 @@ def create_end_user(request):
                     "business_identity": data.get(
                         "business_identity", "direct_customer"
                     ),
+                    "registration_authority": "Companies House",
+                    "is_number_assigned_to_end_customer": True,
+                    "business_address_sid": "f926d485-3cde-4240-98f5-6e3f2b80c001",
                 }
             )
 
