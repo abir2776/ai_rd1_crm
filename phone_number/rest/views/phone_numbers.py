@@ -1474,3 +1474,36 @@ def countries(request):
         ]
 
     return JsonResponse({"countries": countries}, safe=False)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def available_phone_numbers(request, country_code):
+    user = request.user
+    organization = user.get_organization()
+    subaccount = get_object_or_404(TwilioSubAccount, organization=organization)
+
+    url = (
+        f"https://api.twilio.com/2010-04-01/Accounts/"
+        f"{subaccount.twilio_account_sid}/AvailablePhoneNumbers/{country_code}/Local.json"
+    )
+    auth = (subaccount.twilio_account_sid, subaccount.twilio_auth_token)
+
+    search_query = request.GET.get("search", "").strip()
+
+    params = {}
+    if search_query:
+        params["Contains"] = search_query
+
+    try:
+        resp = requests.get(url, auth=auth, params=params, timeout=10)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        return HttpResponse(
+            f"Error fetching phone numbers from Twilio: {e}", status=502
+        )
+
+    data = resp.json()
+    phone_numbers = data.get("available_phone_numbers", [])
+
+    return JsonResponse({"phone_numbers": phone_numbers}, safe=False)

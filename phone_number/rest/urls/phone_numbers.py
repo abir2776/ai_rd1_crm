@@ -8,6 +8,11 @@ urlpatterns = [
     path("", phone_numbers.PhoneNumberListView.as_view(), name="phone_number_list"),
     path("countries", phone_numbers.countries, name="countries"),
     path(
+        "available_phone_numbers",
+        phone_numbers.available_phone_numbers,
+        name="available-phone-numbers",
+    ),
+    path(
         "documents",
         phone_numbers.SupportingDocumentListView.as_view(),
         name="supporting_document_list",
