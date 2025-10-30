@@ -96,6 +96,11 @@ class OrganizationPlatform(BaseModelWithUID):
     connected_at = models.DateTimeField(blank=True, null=True)
     last_synced_at = models.DateTimeField(blank=True, null=True)
     config = models.JSONField(default=dict, blank=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
 
     class Meta:
         unique_together = ("organization", "platform")
@@ -122,6 +127,11 @@ class OrganizationUser(BaseModelWithUID):
     is_active = models.BooleanField(default=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     last_active = models.DateTimeField(blank=True, null=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.ACTIVE,
+    )
 
     class Meta:
         unique_together = ("organization", "user")
