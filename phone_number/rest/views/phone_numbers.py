@@ -4,7 +4,7 @@ import logging
 import os
 
 import requests
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from requests.auth import HTTPBasicAuth
@@ -28,8 +28,6 @@ from phone_number.rest.serializers.phone_numbers import (
     RegulatoryBundleSerializer,
     SupportingDocumentSerializer,
 )
-import requests
-from django.http import JsonResponse, HttpResponse
 
 logger = logging.getLogger(__name__)
 
@@ -1478,7 +1476,10 @@ def countries(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
-def available_phone_numbers(request, country_code):
+def available_phone_numbers(request):
+    country_code = request.GET.get("country", None)
+    if country_code == None:
+        return HttpResponse("Country code is required", status=400)
     user = request.user
     organization = user.get_organization()
     subaccount = get_object_or_404(TwilioSubAccount, organization=organization)
