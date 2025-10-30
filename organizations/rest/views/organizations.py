@@ -37,8 +37,6 @@ class MyOrganizationListView(ListAPIView):
 
 
 class OrganizationSwitchAPIView(APIView):
-    permission_classes = [AllowAny]
-
     def put(self, request, uid):
         organization_user = OrganizationUser.objects.filter(uid=uid).first()
         if organization_user == None:
@@ -47,7 +45,7 @@ class OrganizationSwitchAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         OrganizationUser.objects.filter(user=request.user, is_active=True).update(
-            is_acitve=False
+            is_active=False
         )
         organization_user.is_active = True
         organization_user.save()
