@@ -71,7 +71,7 @@ class UserForgetPasswordAPIView(APIView):
         user.save()
         context = {
             "username": user.get_full_name(),
-            "verification_link": f"{settings.FRONTEND_BASE_URL}/password/{user.token}?email={email}",
+            "verification_link": f"{settings.FRONTEND_BASE_URL}/resetPassword/{user.token}?email={email}",
             "current_year": 2025,
         }
         send_email_task.delay(

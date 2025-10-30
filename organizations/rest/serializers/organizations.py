@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from organizations.models import Organization
+from organizations.models import Organization, OrganizationUser
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -53,3 +53,18 @@ class OrganizationSerializer(serializers.ModelSerializer):
             user.save()
 
         return instance
+
+
+class MyOrganizationsSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationUser
+        fields = [
+            "id",
+            "uid",
+            "organization",
+            "role",
+            "is_active",
+            "joined_at",
+            "last_active",
+        ]
+        read_only_fields = ("__all__",)

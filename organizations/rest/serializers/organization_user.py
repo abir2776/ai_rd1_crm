@@ -11,6 +11,7 @@ class OrganizationUserSerializer(serializers.ModelSerializer):
         model = OrganizationUser
         fields = [
             "id",
+            "uid",
             "organization",
             "user",
             "role",
