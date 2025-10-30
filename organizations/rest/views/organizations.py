@@ -50,6 +50,6 @@ class OrganizationSwitchAPIView(APIView):
         organization_user.is_active = True
         organization_user.save()
         return Response(
-            {"detail": f"Account Switched To {organization_user.name}"},
+            {"detail": f"Account Switched To {organization_user.organization.name}"},
             status=status.HTTP_200_OK,
         )
