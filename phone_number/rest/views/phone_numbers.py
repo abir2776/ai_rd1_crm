@@ -998,15 +998,12 @@ def search_phone_numbers(request):
 @permission_classes([IsAuthenticated])
 def buy_phone_number(request):
     """
-    Buy a phone number after bundle approval
+    Buy a Twilio phone number (requires approved bundle and address)
 
     POST /api/twilio/phone-numbers/buy/
     {
-        "phone_number": "+14155551234",  # Optional: specific number
-        "area_code": "415",  # Optional: search by area code
-        "country": "US",
-        "bundle_id": "uuid",  # Required
-        "address_id": "uuid"  # Required
+        "phone_number": "+14155551234",   # Required
+        "bundle_id": "uuid",              # Required (RegulatoryBundle.uid)
     }
     """
     try:
@@ -1014,73 +1011,50 @@ def buy_phone_number(request):
         data = request.data
         organization = user.get_organization()
 
-        # Get subaccount
-        subaccount = get_object_or_404(TwilioSubAccount, organization=organization)
-
-        # Get and validate bundle
+        # --- Validate required fields ---
+        phone_number = data.get("phone_number")
         bundle_id = data.get("bundle_id")
-        bundle = get_object_or_404(
-            RegulatoryBundle, uid=bundle_id, organization=organization
-        )
 
-        if bundle.status != "TWILIO_APPROVED":
+        if not phone_number or not bundle_id:
             return JsonResponse(
-                {
-                    "error": f"Bundle is not approved yet. Current status: {bundle.status}",
-                    "message": "Please wait for bundle approval before purchasing phone numbers.",
-                },
+                {"error": "phone_number, bundle_id are required fields."},
                 status=400,
             )
 
-        # Get and validate address
-        address_id = data.get("address_id")
-        address = get_object_or_404(
-            RegulatoryAddress, uid=address_id, organization=organization
-        )
+        # --- Get Subaccount ---
+        subaccount = get_object_or_404(TwilioSubAccount, organization=organization)
 
-        # Get Twilio client with subaccount credentials
+        # --- Get Bundle ---
+        bundle = get_object_or_404(
+            RegulatoryBundle, uid=bundle_id, organization=organization
+        )
+        if bundle.status != "TWILIO_APPROVED":
+            return JsonResponse(
+                {
+                    "error": f"Bundle not approved yet. Current status: {bundle.status}",
+                    "message": "Please wait for bundle approval before purchasing.",
+                },
+                status=400,
+            )
+        # --- Get Twilio client ---
         client = get_twilio_client(
             subaccount.twilio_account_sid, subaccount.twilio_auth_token
         )
 
-        phone_number = data.get("phone_number")
-        area_code = data.get("area_code")
-        country = data.get("country", "US")
-
-        # Search for number if not provided
-        if not phone_number:
-            search_params = {"country": country}
-            if area_code:
-                search_params["area_code"] = area_code
-
-            available_numbers = client.available_phone_numbers(country).local.list(
-                **search_params, limit=1
-            )
-
-            if not available_numbers:
-                return JsonResponse(
-                    {"error": "No available phone numbers found"}, status=404
-                )
-
-            phone_number = available_numbers[0].phone_number
-
-        # Purchase the phone number with bundle and address
+        # --- Purchase phone number ---
         purchased_number = client.incoming_phone_numbers.create(
-            phone_number=phone_number,
-            bundle_sid=bundle.bundle_sid,
-            address_sid=address.address_sid,
+            phone_number=phone_number, bundle_sid=bundle.bundle_sid
         )
 
-        # Save to database
+        # --- Save in DB ---
         db_phone_number = TwilioPhoneNumber.objects.create(
             organization=organization,
             subaccount=subaccount,
             bundle=bundle,
-            address=address,
             twilio_sid=purchased_number.sid,
             phone_number=purchased_number.phone_number,
             friendly_name=purchased_number.friendly_name or "",
-            country_code=country,
+            country_code=purchased_number.iso_country,
             number_type=bundle.number_type,
             voice_capable=purchased_number.capabilities.get("voice", False),
             sms_capable=purchased_number.capabilities.get("SMS", False),
@@ -1090,6 +1064,7 @@ def buy_phone_number(request):
             compliance_status="approved",
         )
 
+        # --- Response ---
         return JsonResponse(
             {
                 "success": True,
@@ -1099,15 +1074,15 @@ def buy_phone_number(request):
                     "sid": purchased_number.sid,
                     "phone_number": purchased_number.phone_number,
                     "friendly_name": purchased_number.friendly_name,
-                    "country_code": country,
+                    "country_code": purchased_number.iso_country,
                     "status": db_phone_number.status,
                     "capabilities": {
                         "voice": db_phone_number.voice_capable,
                         "sms": db_phone_number.sms_capable,
                         "mms": db_phone_number.mms_capable,
+                        "fax": db_phone_number.fax_capable,
                     },
                     "bundle_sid": bundle.bundle_sid,
-                    "address_sid": address.address_sid,
                 },
             },
             status=201,
@@ -1118,6 +1093,7 @@ def buy_phone_number(request):
         return JsonResponse(
             {"error": f"Twilio error: {e.msg}", "code": e.code}, status=400
         )
+
     except Exception as e:
         logger.error(f"Error buying phone number: {str(e)}")
         return JsonResponse({"error": str(e)}, status=500)
