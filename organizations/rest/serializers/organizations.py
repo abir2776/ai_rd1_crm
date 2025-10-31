@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from common.serializers import OrganizationSlimSerializer
 from organizations.models import Organization, OrganizationUser
 
 
@@ -56,6 +58,8 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
 
 class MyOrganizationsSerializer(serializers.ModelSerializer):
+    organization = OrganizationSlimSerializer(read_only=True)
+
     class Meta:
         model = OrganizationUser
         fields = [
