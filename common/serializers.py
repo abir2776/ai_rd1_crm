@@ -12,7 +12,15 @@ class UserSlimSerializer(serializers.ModelSerializer):
 
 
 class OrganizationSlimSerializer(serializers.ModelSerializer):
-    logo = VersatileImageFieldSerializer(read_only=True)
+    logo = VersatileImageFieldSerializer(
+        read_only=True,
+        sizes=[
+            ("full_size", "url"),
+            ("thumbnail", "thumbnail__100x100"),
+            ("medium_square_crop", "crop__400x400"),
+            ("small_square_crop", "crop__50x50"),
+        ],
+    )
 
     class Meta:
         model = Organization
