@@ -68,7 +68,8 @@ def create_subaccount(request):
         # Check if subaccount already exists
         if TwilioSubAccount.objects.filter(organization=organization).exists():
             return JsonResponse(
-                {"error": "Subaccount already exists for this organization"}, status=400
+                {"details": "Subaccount already exists for this organization"},
+                status=200,
             )
 
         # Create subaccount via Twilio API
