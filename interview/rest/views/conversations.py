@@ -39,7 +39,6 @@ class SaveConversationView(APIView):
                     "organization_id": validated_data["organization_id"],
                     "candidate_id": validated_data["candidate_id"],
                     "job_id": validated_data["job_id"],
-                    "company_id": validated_data["company_id"],
                     "conversation_text": validated_data["conversation_text"],
                     "conversation_json": validated_data["conversation_json"],
                     "message_count": validated_data["message_count"],
