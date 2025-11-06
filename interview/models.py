@@ -50,4 +50,4 @@ class InterviewConversation(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Conversation {self.call_sid} - {self.candidate}"
+        return f"Conversation {self.call_sid} - {self.candidate_id}"
