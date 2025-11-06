@@ -30,10 +30,9 @@ class InterviewTaken(BaseModelWithUID):
 class InterviewConversation(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     call_sid = models.CharField(max_length=100, unique=True)
-    application = models.ForeignKey("Application", on_delete=models.CASCADE)
-    candidate = models.ForeignKey("Candidate", on_delete=models.CASCADE)
-    job = models.ForeignKey("Job", on_delete=models.CASCADE)
-    company = models.ForeignKey("Company", on_delete=models.CASCADE)
+    application_id = models.CharField(max_length=100)
+    candidate_id = models.CharField(max_length=100)
+    job_id = models.CharField(max_length=100)
 
     conversation_text = models.TextField(help_text="Full conversation in text format")
     conversation_json = models.JSONField(
