@@ -1,6 +1,8 @@
 from django.db import models
+
 from common.choices import Status
 from common.models import BaseModelWithUID
+from organizations.models import Organization
 
 
 class InterviewType(BaseModelWithUID):
@@ -23,3 +25,30 @@ class InterviewTaken(BaseModelWithUID):
 
     def __str__(self):
         return f"company_id: {self.company_id} - application_id: {self.application_id} - interview_type: {self.interview_type.name}"
+
+
+class InterviewConversation(models.Model):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    call_sid = models.CharField(max_length=100, unique=True)
+    application = models.ForeignKey("Application", on_delete=models.CASCADE)
+    candidate = models.ForeignKey("Candidate", on_delete=models.CASCADE)
+    job = models.ForeignKey("Job", on_delete=models.CASCADE)
+    company = models.ForeignKey("Company", on_delete=models.CASCADE)
+
+    conversation_text = models.TextField(help_text="Full conversation in text format")
+    conversation_json = models.JSONField(
+        help_text="Conversation messages in JSON format"
+    )
+    message_count = models.IntegerField(default=0)
+
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "interview_conversations"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Conversation {self.call_sid} - {self.candidate}"
