@@ -17,6 +17,7 @@ class InterviewType(BaseModelWithUID):
 
 
 class InterviewTaken(BaseModelWithUID):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     company_id = models.PositiveIntegerField()
     application_id = models.PositiveIntegerField()
     candidate_id = models.PositiveIntegerField()

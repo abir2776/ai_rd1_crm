@@ -1,3 +1,6 @@
-from django.urls import path, include
+from django.urls import include, path
 
-urlpatterns = [path("conversations/", include("interview.rest.urls.conversations"))]
+urlpatterns = [
+    path("", include("interview.rest.urls.interview")),
+    path("conversations/", include("interview.rest.urls.conversations")),
+]
