@@ -16,13 +16,10 @@ Including another URLconf
 """
 
 from django.contrib import admin
-from django.urls import path, re_path, include
-
-from rest_framework import permissions
-
-from drf_yasg.views import get_schema_view
+from django.urls import include, path, re_path
 from drf_yasg import openapi
-
+from drf_yasg.views import get_schema_view
+from rest_framework import permissions
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
@@ -77,4 +74,5 @@ urlpatterns = [
     path("api/v1/phone_number/", include("phone_number.rest.urls.phone_numbers")),
     path("api/v1/interview/", include("interview.rest.urls")),
     path("api/v1/organizations/", include("organizations.rest.urls")),
+    path("api/v1/subscription/", include("subscription.rest.urls")),
 ]

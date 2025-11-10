@@ -1,9 +1,9 @@
-from django.db import models
 from django.contrib.auth import get_user_model
-from django.utils import timezone
-from datetime import timedelta
-from common.models import BaseModelWithUID
+from django.db import models
+
 from common.choices import Status
+from common.models import BaseModelWithUID
+from organizations.models import Organization
 
 User = get_user_model()
 
@@ -53,14 +53,13 @@ class PlanFeature(BaseModelWithUID):
 
 
 class Subscription(BaseModelWithUID):
-    user = models.ForeignKey(
-        User, on_delete=models.CASCADE, related_name="subscriptions"
+    organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, related_name="subscriptions"
     )
-    plan = models.ForeignKey(
-        SubscriptionPlan, on_delete=models.CASCADE, related_name="subscriptions"
+    plan_feature = models.ForeignKey(
+        PlanFeature, on_delete=models.CASCADE, related_name="subscriptions"
     )
-    start_date = models.DateTimeField(default=timezone.now)
-    end_date = models.DateTimeField()
+    available_limit = models.IntegerField(null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -69,16 +68,4 @@ class Subscription(BaseModelWithUID):
     auto_renew = models.BooleanField(default=True)
 
     def __str__(self):
-        return f"{self.user.username} - {self.plan.name}"
-
-    def save(self, *args, **kwargs):
-        if not self.end_date:
-            self.end_date = self.start_date + timedelta(days=30)
-        super().save(*args, **kwargs)
-
-    @property
-    def is_expired(self):
-        return timezone.now() > self.end_date
-
-    def remaining_days(self):
-        return max((self.end_date - timezone.now()).days, 0)
+        return f"{self.organization.name} - {self.plan_feature.feature.name}"
