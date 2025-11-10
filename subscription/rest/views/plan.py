@@ -1,10 +1,10 @@
 from rest_framework.generics import ListAPIView
 
-from subscription.models import SubscriptionPlan
+from subscription.models import PlanFeature
 
 from ..serializers.plan import PlanFeatureSerializer
 
 
 class PlanFeatureListView(ListAPIView):
-    queryset = SubscriptionPlan.objects.filter()
+    queryset = PlanFeature.objects.filter()
     serializer_class = PlanFeatureSerializer
