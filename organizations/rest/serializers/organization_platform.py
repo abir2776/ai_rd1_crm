@@ -44,6 +44,7 @@ class OrganizationPlatformTokenSerializer(serializers.Serializer):
             refresh_token = token_data.get("refresh_token")
             expires_in = token_data.get("expires_in")  # seconds
             token_type = token_data.get("token_type")
+            base_url = token_data.get("api")
             expires_at = None
             if expires_in:
                 expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
@@ -53,6 +54,7 @@ class OrganizationPlatformTokenSerializer(serializers.Serializer):
                 defaults={
                     "access_token": access_token,
                     "refresh_token": refresh_token,
+                    "base_url": base_url,
                     "token_type": token_type,
                     "expires_at": expires_at,
                     "is_connected": True,
