@@ -19,9 +19,17 @@ class InterviewType(BaseModelWithUID):
 class InterviewTaken(BaseModelWithUID):
     company_id = models.PositiveIntegerField()
     application_id = models.PositiveIntegerField()
+    candidate_id = models.PositiveIntegerField()
+    job_id = models.PositiveIntegerField()
     interview_type = models.ForeignKey(InterviewType, on_delete=models.CASCADE)
+    interview_status = models.CharField(max_length=100)
+    ai_dicision = models.CharField(max_length=100)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
+    call_sid = models.CharField(max_length=100)
+    call_duration = models.CharField(max_length=100)
+    call_status = models.CharField(max_length=100)
+    disconnection_reason = models.CharField(max_length=100)
 
     def __str__(self):
         return f"company_id: {self.company_id} - application_id: {self.application_id} - interview_type: {self.interview_type.name}"

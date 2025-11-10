@@ -1,19 +1,10 @@
 from rest_framework import serializers
 
-from subscription.models import SubscriptionPlan,Subscription
+from subscription.models import PlanFeature
 
 
-class SubscriptionPlanSerializer(serializers.ModelSerializer):
+class PlanFeatureSerializer(serializers.ModelSerializer):
     class Meta:
-        model = SubscriptionPlan
-        fields = "__all__"
-        read_only_fields = []
-        
-        
-class SubscriptionSerializer(serializers.ModelSerializer):
-    plan_feature_uid = serializers.CharField(write_only=True)
-    
-    class Meta:
-        model = Subscription
+        model = PlanFeature
         fields = "__all__"
         read_only_fields = []
