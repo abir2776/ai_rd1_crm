@@ -2,7 +2,7 @@ from django.db import models
 
 from common.choices import Status
 from common.models import BaseModelWithUID
-from organizations.models import Organization
+from organizations.models import Organization, Platform
 
 
 class InterviewType(BaseModelWithUID):
@@ -36,7 +36,7 @@ class InterviewTaken(BaseModelWithUID):
         return f"company_id: {self.company_id} - application_id: {self.application_id} - interview_type: {self.interview_type.name}"
 
 
-class InterviewConversation(models.Model):
+class InterviewConversation(BaseModelWithUID):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     call_sid = models.CharField(max_length=100, unique=True)
     application_id = models.PositiveIntegerField()
@@ -60,3 +60,35 @@ class InterviewConversation(models.Model):
 
     def __str__(self):
         return f"Conversation {self.call_sid} - {self.candidate_id}"
+
+
+class PrimaryQuestion(BaseModelWithUID):
+    question = models.CharField(max_length=255)
+    status = models.CharField(
+        max_length=50, choices=Status.choices, default=Status.ACTIVE
+    )
+
+    def __str__(self):
+        return self.status
+
+
+class AIPhoneCallConfig(BaseModelWithUID):
+    orgaqnization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    platform = models.ForeignKey(Platform, on_delete=models.CASCADE)
+    end_call_if_primary_answer_negative = models.BooleanField(default=False)
+    status_for_calling = models.PositiveIntegerField()
+    calling_time_after_status_update = models.CharField(max_length=255)
+    status_for_unsuccessful_call = models.PositiveIntegerField()
+    status_for_successful_call = models.PositiveIntegerField()
+    status_when_call_is_placed = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.orgaqnization.name}-{self.platform.name}"
+
+
+class QuestionConfigConnection(BaseModelWithUID):
+    question = models.ForeignKey(PrimaryQuestion, on_delete=models.CASCADE)
+    config = models.ForeignKey(AIPhoneCallConfig, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return f"{self.question.question}-{self.config.orgaqnization}"
