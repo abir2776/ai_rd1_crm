@@ -2,7 +2,8 @@ from django.db import models
 
 from common.choices import Status
 from common.models import BaseModelWithUID
-from organizations.models import Organization, Platform
+from organizations.models import Organization, OrganizationPlatform
+from phone_number.models import TwilioPhoneNumber
 
 
 class InterviewType(BaseModelWithUID):
@@ -22,9 +23,8 @@ class InterviewTaken(BaseModelWithUID):
     application_id = models.PositiveIntegerField()
     candidate_id = models.PositiveIntegerField()
     job_id = models.PositiveIntegerField()
-    interview_type = models.ForeignKey(InterviewType, on_delete=models.CASCADE)
     interview_status = models.CharField(max_length=100)
-    ai_dicision = models.CharField(max_length=100)
+    ai_dicision = models.CharField(max_length=100, null=True, blank=True)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
     call_sid = models.CharField(max_length=100)
@@ -74,7 +74,8 @@ class PrimaryQuestion(BaseModelWithUID):
 
 class AIPhoneCallConfig(BaseModelWithUID):
     orgaqnization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    platform = models.ForeignKey(Platform, on_delete=models.CASCADE)
+    platform = models.ForeignKey(OrganizationPlatform, on_delete=models.CASCADE)
+    phone = models.ForeignKey(TwilioPhoneNumber, on_delete=models.CASCADE)
     end_call_if_primary_answer_negative = models.BooleanField(default=False)
     status_for_calling = models.PositiveIntegerField()
     calling_time_after_status_update = models.CharField(max_length=255)
