@@ -23,7 +23,7 @@ class InterviewTaken(BaseModelWithUID):
     application_id = models.PositiveIntegerField()
     candidate_id = models.PositiveIntegerField()
     job_id = models.PositiveIntegerField()
-    interview_status = models.CharField(max_length=100)
+    interview_status = models.CharField(max_length=100, null=True, blank=True)
     ai_dicision = models.CharField(max_length=100, null=True, blank=True)
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
