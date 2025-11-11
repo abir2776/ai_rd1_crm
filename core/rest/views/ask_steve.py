@@ -22,6 +22,7 @@ class AIRecruiterChatView(APIView):
                     {"error": "messages must be a list of message objects"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+
             system_instruction = (
                 "You are RecruiterAI — a professional assistant for a recruitment automation platform. "
                 "You understand and explain tools like AI WhatsApp Recruiter, AI Phone Call Recruiter, "
@@ -29,12 +30,13 @@ class AIRecruiterChatView(APIView):
                 "You always respond clearly, concisely, and professionally, staying focused on recruitment automation. "
                 "Never make up new features. Continue conversations naturally using context from prior messages."
             )
-            conversation = client.conversations.create(
-                model="gpt-4o", instructions=system_instruction, messages=messages
+            full_messages = [
+                {"role": "system", "content": system_instruction}
+            ] + messages
+            completion = client.chat.completions.create(
+                model="gpt-4o", messages=full_messages
             )
-            ai_message = None
-            if conversation and conversation.output and len(conversation.output) > 0:
-                ai_message = conversation.output[0].content[0].text
+            ai_message = completion.choices[0].message.content
 
             return Response(
                 {"reply": ai_message or "No response generated."},
