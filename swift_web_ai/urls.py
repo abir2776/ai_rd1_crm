@@ -70,6 +70,7 @@ urlpatterns = [
         name="token_verify",
     ),
     path("admin/", admin.site.urls),
+    path("api/v1/public/ask-steve/", include("core.rest.urls.ask_steve")),
     path("api/v1/auth/", include("organizations.rest.urls.register")),
     path("api/v1/phone_number/", include("phone_number.rest.urls.phone_numbers")),
     path("api/v1/interview/", include("interview.rest.urls")),
