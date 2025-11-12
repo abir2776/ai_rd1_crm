@@ -172,23 +172,8 @@ def fetch_platform_candidates(config):
                     candidate_id = candidate.get("candidateId")
                     candidate_first_name = candidate.get("firstName", "")
                     candidate_last_name = candidate.get("lastName", "")
-                    contacts = candidate.get("contacts", [])
-                    candidate_phone = ""
+                    candidate_phone = candidate.get("mobile", "")
                     if application_id != 10898990:
-                        continue
-                    for contact in contacts:
-                        if (
-                            contact.get("type") == "Mobile"
-                            or contact.get("type") == "Phone"
-                        ):
-                            candidate_phone = contact.get("value", "")
-                            break
-                    if not candidate_phone:
-                        candidate_phone = candidate.get("phone", {}).get("number", "")
-                    if not candidate_phone:
-                        print(
-                            f"No phone number for candidate: {candidate_first_name} {candidate_last_name}"
-                        )
                         continue
 
                     candidate_data = {
