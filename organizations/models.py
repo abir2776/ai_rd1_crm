@@ -115,7 +115,7 @@ class OrganizationPlatform(BaseModelWithUID):
         return f"{self.organization.name} - {self.platform.name}"
 
     def refresh_access_token(self):
-        token_url = f"{self.base_url.rstrip('/')}/connect/token"
+        token_url = "https://id.jobadder.com/connect/token"
         client_id = self.platform.client_id
         client_secret = self.platform.client_secret
 
