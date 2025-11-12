@@ -32,7 +32,9 @@ class InterviewTaken(BaseModelWithUID):
     disconnection_reason = models.CharField(max_length=100)
 
     def __str__(self):
-        return f"company_id: {self.company_id} - application_id: {self.application_id} - interview_type: {self.interview_type.name}"
+        return (
+            f"candidate_id: {self.candidate_id} - application_id: {self.application_id}"
+        )
 
 
 class InterviewConversation(BaseModelWithUID):
