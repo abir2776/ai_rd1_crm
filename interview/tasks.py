@@ -1,242 +1,269 @@
-from celery import shared_task
 import os
+
 import requests
-from datetime import datetime
+from celery import shared_task
 from dotenv import load_dotenv
+
+from interview.models import AIPhoneCallConfig
+from organizations.models import Organization
+from subscription.models import Subscription
 
 load_dotenv()
 
-BASE_API_URL = os.getenv("BASE_URL", "http://localhost:5050")
+BASE_API_URL = os.getenv("CALLING_BASE_URL", "http://localhost:5050")
 
 
 @shared_task(bind=True, max_retries=3)
 def make_interview_call(
-    self,
     to_number: str,
-    company_id: int,
+    from_phone_number: str,
+    organization_id: int,
     application_id: int,
     interview_type: str = "general",
     candidate_name: str = None,
+    candidate_id: int = None,
+    job_title: str = None,
+    job_ad_id: int = None,
+    job_details: dict = None,
+    primary_questions: list = [],
+    should_end_if_primary_question_failed: bool = False,
 ):
-    """
-    Celery task to make an interview call with company and application tracking.
-    Retries up to 3 times if it fails.
-
-    Args:
-        to_number: Phone number to call
-        company_id: ID of the company (required for Django tracking)
-        application_id: ID of the application (required for Django tracking)
-        interview_type: Type of interview
-        candidate_name: Name of the candidate
-    """
     try:
+        payload = {
+            "to_phone_number": to_number,
+            "from_phone_number": from_phone_number,
+            "organization_id": organization_id,
+            "application_id": application_id,
+            "candidate_id": candidate_id,
+            "job_title": job_title,
+            "job_id": job_ad_id,
+            "job_details": job_details or {},
+            "candidate_first_name": candidate_name,
+            "interview_type": interview_type,
+            "primary_questions": primary_questions,
+            "should_end_if_primary_question_failed": should_end_if_primary_question_failed,
+        }
+
         response = requests.post(
             f"{BASE_API_URL}/initiate-call",
-            json={
-                "to_number": to_number,
-                "interview_type": interview_type,
-                "candidate_name": candidate_name,
-                "company_id": company_id,
-                "application_id": application_id,
-            },
+            json=payload,
             timeout=30,
         )
         response.raise_for_status()
-
-        result = response.json()
-        print(f"Call initiated successfully: {result['call_sid']}")
-        print(f"Company: {company_id}, Application: {application_id}")
-        return result
+        print("Call initiated successfully")
 
     except Exception as exc:
         print(f"Error making call to {to_number}: {str(exc)}")
-        # Retry after 5 minutes if failed
-        raise self.retry(exc=exc, countdown=300)
+
+
+def fetch_job_details(job_self_url: str, config):
+    access_token = config.platform.access_token
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        response = requests.get(job_self_url, headers=headers, timeout=30)
+        if response.status_code == 401:
+            print("Access token expired, refreshing...")
+            access_token = config.platform.refresh_access_token()
+            if not access_token:
+                print("Error: Could not refresh access token")
+                return []
+
+            headers["Authorization"] = f"Bearer {access_token}"
+            response = requests.get(job_self_url, headers=headers, timeout=30)
+        response.raise_for_status()
+        job_data = response.json()
+
+        return {
+            "description": job_data.get("description", ""),
+            "summary": job_data.get("summary", ""),
+            "location": job_data.get("location", {}).get("city", ""),
+            "salary": job_data.get("salary", {}).get("description", ""),
+        }
+    except Exception as e:
+        print(f"Error fetching job details from {job_self_url}: {str(e)}")
+        return {
+            "description": "",
+            "summary": "",
+            "location": "",
+            "salary": "",
+        }
 
 
 @shared_task
-def schedule_interview_call(
-    to_number: str,
-    company_id: int,
-    application_id: int,
-    interview_type: str,
-    candidate_name: str,
-    scheduled_time: str,
-):
-    """
-    Schedule an interview call for a specific time.
+def fetch_platform_candidates(config):
+    access_token = config.platform.access_token
+    primary_questions = config.get_primary_questions()
 
-    Args:
-        to_number: Phone number to call
-        company_id: ID of the company
-        application_id: ID of the application
-        interview_type: Type of interview
-        candidate_name: Name of the candidate
-        scheduled_time: ISO format datetime string (e.g., "2025-10-22T10:00:00")
-    """
-    scheduled_dt = datetime.fromisoformat(scheduled_time)
-    eta = scheduled_dt
+    if not access_token:
+        print("Error: Could not get JobAdder access token")
+        return []
 
-    make_interview_call.apply_async(
-        args=[to_number, company_id, application_id, interview_type, candidate_name],
-        eta=eta,
-    )
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
 
-    return f"Interview scheduled for {candidate_name} at {scheduled_time}"
+    candidates = []
+
+    try:
+        jobs_response = requests.get(
+            f"{config.platform.base_url}/jobads",
+            headers=headers,
+            timeout=30,
+        )
+        if jobs_response.status_code == 401:
+            print("Access token expired, refreshing...")
+            access_token = config.platform.refresh_access_token()
+            if not access_token:
+                print("Error: Could not refresh access token")
+                return []
+
+            headers["Authorization"] = f"Bearer {access_token}"
+            jobs_response = requests.get(
+                f"{config.platform.base_url}/jobads",
+                headers=headers,
+                timeout=30,
+            )
+
+        jobs_response.raise_for_status()
+        jobs_data = jobs_response.json()
+
+        print(f"Found {len(jobs_data.get('items', []))} live jobs")
+        for job in jobs_data.get("items", []):
+            ad_id = job.get("adId")
+            job_title = job.get("title")
+            job_self_url = job.get("links", {}).get("self")
+            applications_url = job.get("links", {}).get("applications")
+
+            if ad_id != 648689:
+                continue
+
+            if not applications_url:
+                print(f"No applications link found for job: {job_title}")
+                continue
+            job_details = fetch_job_details(job_self_url, config)
+
+            try:
+                applications_response = requests.get(
+                    applications_url,
+                    headers=headers,
+                    timeout=30,
+                )
+                if applications_response.status_code == 401:
+                    access_token = config.platform.refresh_access_token()
+                    if access_token:
+                        headers["Authorization"] = f"Bearer {access_token}"
+                        applications_response = requests.get(
+                            applications_url,
+                            headers=headers,
+                            timeout=30,
+                        )
+
+                applications_response.raise_for_status()
+                applications_data = applications_response.json()
+
+                for application in applications_data.get("items", []):
+                    application_id = application.get("applicationId")
+                    candidate = application.get("candidate", {})
+                    candidate_id = candidate.get("candidateId")
+                    candidate_first_name = candidate.get("firstName", "")
+                    candidate_last_name = candidate.get("lastName", "")
+                    contacts = candidate.get("contacts", [])
+                    candidate_phone = ""
+                    if application_id != 10898990:
+                        continue
+                    for contact in contacts:
+                        if (
+                            contact.get("type") == "Mobile"
+                            or contact.get("type") == "Phone"
+                        ):
+                            candidate_phone = contact.get("value", "")
+                            break
+                    if not candidate_phone:
+                        candidate_phone = candidate.get("phone", {}).get("number", "")
+                    if not candidate_phone:
+                        print(
+                            f"No phone number for candidate: {candidate_first_name} {candidate_last_name}"
+                        )
+                        continue
+
+                    candidate_data = {
+                        "to_number": candidate_phone,
+                        "from_phone_number": config.phone.phone_number,
+                        "organization_id": config.organization_id,
+                        "application_id": application_id,
+                        "candidate_id": candidate_id,
+                        "candidate_name": candidate_first_name,
+                        "job_title": job_title,
+                        "job_ad_id": ad_id,
+                        "job_details": job_details,
+                        "interview_type": "general",
+                        "primary_questions": primary_questions,
+                        "should_end_if_primary_question_failed": config.end_call_if_primary_answer_negative,
+                    }
+
+                    candidates.append(candidate_data)
+                    print(
+                        f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
+                    )
+
+            except Exception as e:
+                print(f"Error fetching applications for job {job_title}: {str(e)}")
+                continue
+
+        print(f"Total candidates collected: {len(candidates)}")
+        return candidates
+
+    except Exception as e:
+        print(f"Error fetching JobAdder data: {str(e)}")
+        return []
 
 
 @shared_task
-def bulk_interview_calls(candidates: list):
-    """
-    Make interview calls to multiple candidates.
+def bulk_interview_calls(organization_id: int = None):
+    try:
+        config = AIPhoneCallConfig.objects.select_related("platform").get(
+            organization_id=organization_id
+        )
+    except:
+        print(f"No call configuration found for organization_{organization_id}")
+        return
+    candidates = fetch_platform_candidates(config)
 
-    Args:
-        candidates: List of dicts with keys: to_number, company_id, application_id,
-                   interview_type, candidate_name
-
-    Example:
-        candidates = [
-            {
-                "to_number": "+1234567890",
-                "company_id": 1,
-                "application_id": 100,
-                "interview_type": "technical",
-                "candidate_name": "John Doe"
-            },
-            {
-                "to_number": "+0987654321",
-                "company_id": 1,
-                "application_id": 101,
-                "interview_type": "general",
-                "candidate_name": "Jane Smith"
-            }
-        ]
-    """
-    results = []
+    if not candidates:
+        return {"error": "No candidates provided or fetched"}
 
     for i, candidate in enumerate(candidates):
-        # Validate required fields
-        if not all(
-            k in candidate for k in ["to_number", "company_id", "application_id"]
-        ):
-            results.append(
-                {
-                    "candidate": candidate.get("candidate_name", "Unknown"),
-                    "status": "failed",
-                    "error": "Missing required fields",
-                }
-            )
-            continue
-
-        # Stagger calls by 2 minutes to avoid overwhelming the system
         countdown = i * 120
 
-        task = make_interview_call.apply_async(
+        make_interview_call.apply_async(
             args=[
                 candidate["to_number"],
-                candidate["company_id"],
+                candidate["from_phone_number"],
+                candidate["organization_id"],
                 candidate["application_id"],
                 candidate.get("interview_type", "general"),
                 candidate.get("candidate_name"),
+                candidate.get("candidate_id"),
+                candidate.get("job_title"),
+                candidate.get("job_ad_id"),
+                candidate.get("job_details"),
+                candidate.get("primary_questions"),
+                candidate.get("should_end_if_primary_question_failed"),
             ],
             countdown=countdown,
         )
 
-        results.append(
-            {
-                "candidate": candidate.get("candidate_name"),
-                "company_id": candidate["company_id"],
-                "application_id": candidate["application_id"],
-                "task_id": task.id,
-                "scheduled_in_seconds": countdown,
-                "status": "scheduled",
-            }
-        )
-
-    return results
-
 
 @shared_task
-def retry_failed_call(
-    call_sid: str,
-    to_number: str,
-    company_id: int,
-    application_id: int,
-    interview_type: str,
-    candidate_name: str,
-    max_attempts: int = 3,
-):
-    """
-    Retry a failed interview call with exponential backoff.
-
-    Args:
-        call_sid: Original call SID that failed
-        to_number: Phone number to call
-        company_id: ID of the company
-        application_id: ID of the application
-        interview_type: Type of interview
-        candidate_name: Name of the candidate
-        max_attempts: Maximum number of retry attempts
-    """
-    for attempt in range(max_attempts):
-        try:
-            response = requests.post(
-                f"{BASE_API_URL}/initiate-call",
-                json={
-                    "to_number": to_number,
-                    "interview_type": interview_type,
-                    "candidate_name": candidate_name,
-                    "company_id": company_id,
-                    "application_id": application_id,
-                },
-                timeout=30,
-            )
-
-            if response.status_code == 200:
-                return {
-                    "success": True,
-                    "attempt": attempt + 1,
-                    "original_call_sid": call_sid,
-                    "new_call_sid": response.json()["call_sid"],
-                    "company_id": company_id,
-                    "application_id": application_id,
-                }
-
-        except Exception as e:
-            print(f"Attempt {attempt + 1} failed for call {call_sid}: {str(e)}")
-            if attempt < max_attempts - 1:
-                # Exponential backoff: 5min, 15min, 45min
-                wait_time = 300 * (3**attempt)
-                import time
-
-                time.sleep(wait_time)
-
-    return {
-        "success": False,
-        "attempts": max_attempts,
-        "original_call_sid": call_sid,
-        "company_id": company_id,
-        "application_id": application_id,
-    }
-
-
-# New task for getting interview status from Django
-@shared_task
-def check_interview_status(interview_uid: str):
-    """
-    Check the status of an interview from Django
-
-    Args:
-        interview_uid: UID of the interview record in Django
-    """
-    django_api_url = os.getenv("DJANGO_API_URL", "http://localhost:8000")
-
-    try:
-        response = requests.get(
-            f"{django_api_url}/api/interview/{interview_uid}/", timeout=10
-        )
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        print(f"Error checking interview status: {str(e)}")
-        return {"error": str(e)}
+def initiate_all_interview():
+    organization_ids = Organization.objects.filter().values_list("id", flat=True)
+    subscribed_organization_ids = Subscription.objects.filter(
+        organization_id__in=organization_ids, available_limit__gt=0
+    ).values_list("organization_id", flat=True)
+    for organization_id in subscribed_organization_ids:
+        bulk_interview_calls.delay(organization_id)

@@ -1,17 +1,21 @@
+import uuid
+
+import requests
+from autoslug import AutoSlugField
 from django.db import models
 from django.utils import timezone
-from autoslug import AutoSlugField
-from .choices import AuthTypeChoices, OrganizationUserRole, OrganizationInvitationStatus
+from versatileimagefield.fields import VersatileImageField
+
+from common.choices import Status
 from common.models import BaseModelWithUID
 from core.models import User
-from common.choices import Status
-import uuid
-from versatileimagefield.fields import VersatileImageField
+
+from .choices import AuthTypeChoices, OrganizationInvitationStatus, OrganizationUserRole
 from .utils import (
     get_organization_media_path_prefix,
     get_organization_slug,
-    get_platform_slug,
     get_platform_media_path_prefix,
+    get_platform_slug,
 )
 
 
@@ -109,6 +113,49 @@ class OrganizationPlatform(BaseModelWithUID):
 
     def __str__(self):
         return f"{self.organization.name} - {self.platform.name}"
+
+    def refresh_access_token(self):
+        token_url = f"{self.base_url.rstrip('/')}/connect/token"
+        client_id = self.platform.client_id
+        client_secret = self.platform.client_secret
+
+        data = {
+            "grant_type": "refresh_token",
+            "refresh_token": self.refresh_token,
+            "client_id": client_id,
+            "client_secret": client_secret,
+        }
+
+        try:
+            response = requests.post(token_url, data=data, timeout=15)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            raise ValueError(f"Failed to refresh token: {e}")
+
+        token_data = response.json()
+
+        self.access_token = token_data.get("access_token")
+        self.refresh_token = token_data.get("refresh_token", self.refresh_token)
+        self.token_type = token_data.get("token_type", "Bearer")
+
+        expires_in = token_data.get("expires_in")
+        if expires_in:
+            self.expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
+
+        self.is_connected = True
+        self.connected_at = timezone.now()
+        self.save(
+            update_fields=[
+                "access_token",
+                "refresh_token",
+                "token_type",
+                "expires_at",
+                "is_connected",
+                "connected_at",
+            ]
+        )
+
+        return self.access_token
 
 
 class OrganizationUser(BaseModelWithUID):

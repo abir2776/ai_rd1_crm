@@ -86,6 +86,12 @@ class AIPhoneCallConfig(BaseModelWithUID):
     def __str__(self):
         return f"{self.orgaqnization.name}-{self.platform.name}"
 
+    def get_primary_questions(self):
+        connections = QuestionConfigConnection.objects.filter(
+            config=self
+        ).select_related("question")
+        return [conn.question.question for conn in connections]
+
 
 class QuestionConfigConnection(BaseModelWithUID):
     question = models.ForeignKey(PrimaryQuestion, on_delete=models.CASCADE)
