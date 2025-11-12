@@ -84,7 +84,7 @@ class AIPhoneCallConfig(BaseModelWithUID):
     status_when_call_is_placed = models.PositiveIntegerField(default=0)
 
     def __str__(self):
-        return f"{self.orgaqnization.name}-{self.platform.name}"
+        return f"{self.orgaqnization.name}-{self.platform.platform.name}"
 
     def get_primary_questions(self):
         connections = QuestionConfigConnection.objects.filter(
