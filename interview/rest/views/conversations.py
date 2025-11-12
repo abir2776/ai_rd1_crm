@@ -37,6 +37,7 @@ class SaveConversationView(APIView):
                 defaults={
                     "application_id": validated_data["application_id"],
                     "organization_id": validated_data["organization_id"],
+                    "interview_id": validated_data["interview_id"],
                     "candidate_id": validated_data["candidate_id"],
                     "job_id": validated_data["job_id"],
                     "conversation_text": validated_data["conversation_text"],

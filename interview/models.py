@@ -39,6 +39,7 @@ class InterviewTaken(BaseModelWithUID):
 
 class InterviewConversation(BaseModelWithUID):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    interview = models.ForeignKey(InterviewTaken, on_delete=models.CASCADE)
     call_sid = models.CharField(max_length=100, unique=True)
     application_id = models.PositiveIntegerField()
     candidate_id = models.PositiveIntegerField()
