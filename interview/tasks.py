@@ -178,7 +178,7 @@ def fetch_platform_candidates(config):
 
                     candidate_data = {
                         "to_number": candidate_phone,
-                        "from_phone_number": config.phone.phone_number,
+                        "from_phone_number": str(config.phone.phone_number),
                         "organization_id": config.organization_id,
                         "application_id": application_id,
                         "candidate_id": candidate_id,
