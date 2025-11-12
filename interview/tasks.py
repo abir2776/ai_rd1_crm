@@ -173,6 +173,9 @@ def fetch_platform_candidates(config):
                     candidate_first_name = candidate.get("firstName", "")
                     candidate_last_name = candidate.get("lastName", "")
                     candidate_phone = candidate.get("mobile", "")
+
+                    if candidate_phone and not candidate_phone.startswith("+"):
+                        candidate_phone = f"+{candidate_phone}"
                     if application_id != 10898990:
                         continue
 
