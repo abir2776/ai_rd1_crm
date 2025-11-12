@@ -13,7 +13,7 @@ load_dotenv()
 BASE_API_URL = os.getenv("CALLING_BASE_URL", "http://localhost:5050")
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(max_retries=3)
 def make_interview_call(
     to_number: str,
     from_phone_number: str,
