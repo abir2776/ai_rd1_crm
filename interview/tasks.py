@@ -226,9 +226,7 @@ def fetch_platform_candidates(config):
 @shared_task
 def bulk_interview_calls(organization_id: int = None):
     try:
-        config = AIPhoneCallConfig.objects.select_related("platform").get(
-            organization_id=organization_id
-        )
+        config = AIPhoneCallConfig.objects.get(organization_id=organization_id)
     except:
         print(f"No call configuration found for organization_{organization_id}")
         return

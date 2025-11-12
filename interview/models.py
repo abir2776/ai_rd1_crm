@@ -73,7 +73,7 @@ class PrimaryQuestion(BaseModelWithUID):
 
 
 class AIPhoneCallConfig(BaseModelWithUID):
-    orgaqnization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     platform = models.ForeignKey(OrganizationPlatform, on_delete=models.CASCADE)
     phone = models.ForeignKey(TwilioPhoneNumber, on_delete=models.CASCADE)
     end_call_if_primary_answer_negative = models.BooleanField(default=False)
