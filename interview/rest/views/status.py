@@ -44,7 +44,7 @@ def jobadder_status_list(request):
     if response.status_code == 200:
         data = response.json()
         statuses = [
-            {"id": item.get("id"), "name": item.get("name")}
+            {"id": item.get("statusId"), "name": item.get("name")}
             for item in data.get("items", [])
         ]
         return Response(statuses, status=http_status.HTTP_200_OK)
