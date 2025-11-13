@@ -30,11 +30,11 @@ def jobadder_status_list(request):
             {"error": "No connected platform found"},
             status=400,
         )
-    response = get_jobadder_status_list(platform.access_token)
+    response = get_jobadder_status_list(platform.access_token, platform.base_url)
     if response.status_code == 401:
         try:
             new_token = platform.refresh_access_token()
-            response = get_jobadder_status_list(new_token)
+            response = get_jobadder_status_list(new_token, platform.base_url)
         except Exception as e:
             return Response(
                 {"error": "Failed to refresh JobAdder token", "details": str(e)},
