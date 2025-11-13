@@ -100,4 +100,4 @@ class QuestionConfigConnection(BaseModelWithUID):
     config = models.ForeignKey(AIPhoneCallConfig, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.question.question}-{self.config.orgaqnization}"
+        return f"{self.question.question}-{self.config.organization}"

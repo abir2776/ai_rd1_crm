@@ -1,6 +1,7 @@
+import requests
 from rest_framework import serializers
-
-from interview.models import InterviewTaken
+from django.conf import settings
+from interview.models import InterviewTaken, AIPhoneCallConfig
 from organizations.models import Organization
 
 
@@ -21,7 +22,42 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"organization_id": "No organization found with this given ID."}
             )
+
+        try:
+            config = AIPhoneCallConfig.objects.get(organization_id=organization_id)
+        except AIPhoneCallConfig.DoesNotExist:
+            raise serializers.ValidationError(
+                {"details": "No config found for this organization."}
+            )
+        status = validated_data.get("ai_decision")
+        application_id = validated_data.get("application_id")
         interview = InterviewTaken.objects.create(
             organization=organization, **validated_data
         )
+        if application_id:
+            jobadder_api_url = f"{config.platform.base_url}/{application_id}"
+            if status == "successful":
+                status_id = config.status_for_successful_call
+            elif status == "unsuccessful":
+                status_id = config.status_for_unsuccessful_call
+            else:
+                status_id = None
+
+            if status_id:
+                headers = {
+                    "Authorization": f"Bearer {config.platform.access_token}",
+                    "Content-Type": "application/json",
+                }
+                payload = {"statusId": status_id}
+
+                try:
+                    response = requests.post(
+                        jobadder_api_url, json=payload, headers=headers, timeout=10
+                    )
+                    response.raise_for_status()
+                except requests.RequestException as e:
+                    raise serializers.ValidationError(
+                        {"jobadder_api": f"Failed to update JobAdder status: {str(e)}"}
+                    )
+
         return interview
