@@ -69,6 +69,7 @@ services:
       dockerfile: Dockerfile
     container_name: django_celery_beat
     command: celery -A swift_web_ai beat --loglevel=info
+    user: root
     volumes:
       - .:/app
     env_file:
