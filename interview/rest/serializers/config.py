@@ -8,8 +8,8 @@ from interview.models import (
 )
 from organizations.models import OrganizationPlatform, Platform
 from organizations.rest.serializers.organization_platform import PlatformSerializer
-from phone_number.rest.serializers.phone_numbers import PhoneNumberSerializer
 from phone_number.models import TwilioPhoneNumber
+from phone_number.rest.serializers.phone_numbers import PhoneNumberSerializer
 
 
 class PrimaryQuestionSerializer(serializers.ModelSerializer):
@@ -77,7 +77,7 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
             )
 
         config = AIPhoneCallConfig.objects.create(
-            organization=organization, platform=platform, phone=phone**validated_data
+            organization=organization, platform=platform, phone=phone, **validated_data
         )
 
         connections = [
