@@ -100,6 +100,7 @@ class PlatformSerializer(serializers.ModelSerializer):
         model = Platform
         fields = [
             "id",
+            "uid",
             "name",
             "slug",
             "description",
