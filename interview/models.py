@@ -81,7 +81,7 @@ class AIPhoneCallConfig(BaseModelWithUID):
     end_call_if_primary_answer_negative = models.BooleanField(default=False)
     application_status_for_calling = models.PositiveIntegerField()
     jobad_status_for_calling = models.CharField(max_length=255)
-    calling_time_after_status_update = models.CharField(max_length=255)
+    calling_time_after_status_update = models.DurationField()
     status_for_unsuccessful_call = models.PositiveIntegerField()
     status_for_successful_call = models.PositiveIntegerField()
     status_when_call_is_placed = models.PositiveIntegerField(default=0)

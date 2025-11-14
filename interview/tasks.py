@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 import requests
 from celery import shared_task
@@ -51,6 +52,7 @@ def make_interview_call(
         )
         response.raise_for_status()
         print("Call initiated successfully")
+        update_application_status_after_call(organization_id, application_id)
 
     except Exception as exc:
         print(f"Error making call to {to_number}: {str(exc)}")
@@ -93,10 +95,74 @@ def fetch_job_details(job_self_url: str, config):
         }
 
 
+def update_application_status_after_call(organization_id: int, application_id: int):
+    try:
+        config = AIPhoneCallConfig.objects.get(organization_id=organization_id)
+
+        status_id = getattr(config, "status_when_call_is_placed", None)
+
+        if not status_id:
+            print(
+                f"No status_when_call_is_placed configured for organization {organization_id}"
+            )
+            return
+
+        jobadder_api_url = f"{config.platform.base_url}/applications/{application_id}"
+
+        access_token = config.platform.access_token
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        payload = {"statusId": status_id}
+
+        response = requests.put(
+            jobadder_api_url, json=payload, headers=headers, timeout=10
+        )
+
+        if response.status_code == 401:
+            print("Access token expired, refreshing...")
+            access_token = config.platform.refresh_access_token()
+            if not access_token:
+                print("Error: Could not refresh access token")
+                return
+
+            headers["Authorization"] = f"Bearer {access_token}"
+            response = requests.put(
+                jobadder_api_url, json=payload, headers=headers, timeout=10
+            )
+
+        response.raise_for_status()
+        print(
+            f"Successfully updated application {application_id} status to {status_id}"
+        )
+
+    except AIPhoneCallConfig.DoesNotExist:
+        print(f"No config found for organization {organization_id}")
+    except requests.RequestException as e:
+        print(f"Failed to update JobAdder application status: {str(e)}")
+    except Exception as e:
+        print(f"Unexpected error updating application status: {str(e)}")
+
+
+def has_enough_time_passed(updated_at_str: str, waiting_duration_minutes: int) -> bool:
+    try:
+        updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+        current_time = datetime.now(timezone.utc)
+        time_diff = (current_time - updated_at).total_seconds() / 60
+
+        return time_diff >= waiting_duration_minutes
+    except Exception as e:
+        print(f"Error parsing updatedAt timestamp '{updated_at_str}': {str(e)}")
+        return False
+
+
 @shared_task
 def fetch_platform_candidates(config):
     access_token = config.platform.access_token
     primary_questions = config.get_primary_questions()
+    waiting_duration = getattr(config, "calling_time_after_status_update", 0)
 
     if not access_token:
         print("Error: Could not get JobAdder access token")
@@ -169,13 +235,17 @@ def fetch_platform_candidates(config):
                     candidate_first_name = candidate.get("firstName", "")
                     candidate_last_name = candidate.get("lastName", "")
                     candidate_phone = candidate.get("mobile", "")
+                    updated_at = application.get("updatedAt", "")
 
                     if candidate_phone and not candidate_phone.startswith("+"):
                         candidate_phone = f"+{candidate_phone}"
+
+                    # Check if job and application status match AND enough time has passed
                     if (
                         job.get("state") == config.jobad_status_for_calling
                         and application.get("statusId")
                         == config.application_status_for_calling
+                        and has_enough_time_passed(updated_at, waiting_duration)
                     ):
                         candidate_data = {
                             "to_number": candidate_phone,
@@ -195,6 +265,15 @@ def fetch_platform_candidates(config):
                         candidates.append(candidate_data)
                         print(
                             f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
+                        )
+                    elif (
+                        job.get("state") == config.jobad_status_for_calling
+                        and application.get("statusId")
+                        == config.application_status_for_calling
+                    ):
+                        print(
+                            f"Skipped candidate: {candidate_first_name} {candidate_last_name} - "
+                            f"waiting period not elapsed (updated: {updated_at})"
                         )
 
             except Exception as e:
