@@ -2,8 +2,11 @@
 from django.db import transaction
 from rest_framework import generics
 
-from interview.models import AIPhoneCallConfig
-from interview.rest.serializers.config import AIPhoneCallConfigSerializer
+from interview.models import AIPhoneCallConfig, PrimaryQuestion
+from interview.rest.serializers.config import (
+    AIPhoneCallConfigSerializer,
+    PrimaryQuestionSerializer,
+)
 
 
 class AIPhoneCallConfigListCreateView(generics.ListCreateAPIView):
@@ -35,3 +38,8 @@ class AIPhoneCallConfigDetailView(generics.RetrieveUpdateDestroyAPIView):
     @transaction.atomic
     def perform_update(self, serializer):
         serializer.save()
+
+
+class PrimaryQuestionListView(generics.ListAPIView):
+    serializer_class = PrimaryQuestionSerializer
+    queryset = PrimaryQuestion.objects.filter()

@@ -19,10 +19,10 @@ class PrimaryQuestionSerializer(serializers.ModelSerializer):
 class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
     platform_uid = serializers.CharField(write_only=True)
     primary_question_inputs = serializers.ListField(
-        child=serializers.CharField(max_length=50)
+        child=serializers.CharField(max_length=50), write_only=True
     )
     primary_questions = serializers.SerializerMethodField()
-    platform = PlatformSerializer
+    platform = PlatformSerializer(read_only=True)
 
     class Meta:
         model = AIPhoneCallConfig
@@ -30,7 +30,8 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
             "uid",
             "platform",
             "end_call_if_primary_answer_negative",
-            "status_for_calling",
+            "application_status_for_calling",
+            "jobad_status_for_calling",
             "calling_time_after_status_update",
             "status_for_unsuccessful_call",
             "status_for_successful_call",
@@ -39,7 +40,7 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
             "primary_question_inputs",
             "primary_questions",
         ]
-        read_only_fields = ["uid"]
+        read_only_fields = ["uid", "platform"]
 
     def get_primary_questions(self, obj):
         question_ids = QuestionConfigConnection.objects.filter(config=obj).values_list(
