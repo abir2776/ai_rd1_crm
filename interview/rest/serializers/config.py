@@ -75,7 +75,11 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"primary_question_inputs": "Some question UIDs are invalid."}
             )
-
+        config = AIPhoneCallConfig.objects.filter(organization=organization)
+        if config.exists():
+            raise serializers.ValidationError(
+                {"details": "Call configuration already exists."}
+            )
         config = AIPhoneCallConfig.objects.create(
             organization=organization, platform=platform, phone=phone, **validated_data
         )
