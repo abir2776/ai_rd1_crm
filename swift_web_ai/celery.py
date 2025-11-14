@@ -22,7 +22,7 @@ def debug_task(self):
 app.conf.beat_schedule = {
     "run-initiate-all-interview-every-5-min": {
         "task": "interview.tasks.initiate_all_interview",
-        "schedule": crontab(minute="*/1"),
+        "schedule": crontab(minute="*/30"),
         "args": (),
     },
 }
