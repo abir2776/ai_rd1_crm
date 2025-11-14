@@ -13,4 +13,9 @@ urlpatterns = [
         organization_platform.ConnectPlatformView.as_view(),
         name="organization-platform-connect",
     ),
+    path(
+        "my_platforms",
+        organization_platform.MyPlatformListView.as_view(),
+        name="my_platforms_list",
+    ),
 ]

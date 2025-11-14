@@ -125,3 +125,9 @@ class PlatformSerializer(serializers.ModelSerializer):
         if organization_platform:
             return organization_platform.is_connected
         return False
+
+
+class MyPlatformSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = OrganizationPlatform
+        fields = "__all__"
