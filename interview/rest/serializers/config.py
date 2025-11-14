@@ -7,7 +7,7 @@ from interview.models import (
     QuestionConfigConnection,
 )
 from organizations.models import OrganizationPlatform, Platform
-from organizations.rest.serializers.organization_platform import PlatformSerializer
+from organizations.rest.serializers.organization_platform import MyPlatformSerializer
 from phone_number.models import TwilioPhoneNumber
 from phone_number.rest.serializers.phone_numbers import PhoneNumberSerializer
 
@@ -26,7 +26,7 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
         child=serializers.CharField(max_length=50), write_only=True
     )
     primary_questions = serializers.SerializerMethodField()
-    platform = PlatformSerializer(read_only=True)
+    platform = MyPlatformSerializer(read_only=True)
 
     class Meta:
         model = AIPhoneCallConfig
