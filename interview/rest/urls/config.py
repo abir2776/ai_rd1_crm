@@ -4,6 +4,7 @@ from django.urls import path
 from interview.rest.views.config import (
     AIPhoneCallConfigDetailView,
     AIPhoneCallConfigListCreateView,
+    PrimaryQuestionListView,
 )
 
 urlpatterns = [
@@ -16,5 +17,10 @@ urlpatterns = [
         "<uuid:uid>",
         AIPhoneCallConfigDetailView.as_view(),
         name="aiphonecallconfig-detail",
+    ),
+    path(
+        "primary_questions",
+        PrimaryQuestionListView.as_view(),
+        name="primary-question-list",
     ),
 ]
