@@ -8,6 +8,8 @@ from interview.models import (
 )
 from organizations.models import OrganizationPlatform, Platform
 from organizations.rest.serializers.organization_platform import PlatformSerializer
+from phone_number.rest.serializers.phone_numbers import PhoneNumberSerializer
+from phone_number.models import TwilioPhoneNumber
 
 
 class PrimaryQuestionSerializer(serializers.ModelSerializer):
@@ -18,6 +20,8 @@ class PrimaryQuestionSerializer(serializers.ModelSerializer):
 
 class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
     platform_uid = serializers.CharField(write_only=True)
+    phone_uid = serializers.CharField(write_only=True)
+    phone = PhoneNumberSerializer(read_only=True)
     primary_question_inputs = serializers.ListField(
         child=serializers.CharField(max_length=50), write_only=True
     )
@@ -29,6 +33,8 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
         fields = [
             "uid",
             "platform",
+            "phone_uid",
+            "phone",
             "end_call_if_primary_answer_negative",
             "application_status_for_calling",
             "jobad_status_for_calling",
@@ -55,11 +61,15 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
         organization = user.get_organization()
 
         platform_uid = validated_data.pop("platform_uid")
+        phone_uid = validated_data.pop("phone_uid")
         primary_question_uids = validated_data.pop("primary_question_inputs", [])
 
         platform = OrganizationPlatform.objects.filter(uid=platform_uid).first()
+        phone = TwilioPhoneNumber.objects.filter(uid=phone_uid).first()
         if not platform:
             raise serializers.ValidationError({"platform_uid": "Invalid platform UID"})
+        if not phone:
+            raise serializers.ValidationError({"phone_uid": "Invalid Phone UID"})
         questions = list(PrimaryQuestion.objects.filter(uid__in=primary_question_uids))
         if len(questions) != len(primary_question_uids):
             raise serializers.ValidationError(
@@ -67,7 +77,7 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
             )
 
         config = AIPhoneCallConfig.objects.create(
-            organization=organization, platform=platform, **validated_data
+            organization=organization, platform=platform, phone=phone**validated_data
         )
 
         connections = [
@@ -80,6 +90,7 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         platform_uid = validated_data.pop("platform_uid", None)
+        phone_uid = validated_data.pop("phone_uid", None)
         primary_question_uids = validated_data.pop("primary_question_inputs", None)
         if platform_uid:
             platform = Platform.objects.filter(uid=platform_uid).first()
@@ -88,6 +99,11 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
                     {"platform_uid": "Invalid platform UID"}
                 )
             instance.platform = platform
+        if phone_uid:
+            phone = TwilioPhoneNumber.objects.filter(uid=phone_uid).first()
+            if not phone:
+                raise serializers.ValidationError({"phone_uid": "Invalid phone UID"})
+            instance.platform = phone
 
         if primary_question_uids is not None:
             questions = list(
