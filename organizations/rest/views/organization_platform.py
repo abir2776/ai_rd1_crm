@@ -49,7 +49,7 @@ class PlatformListView(ListAPIView):
 
 
 class MyPlatformListView(ListAPIView):
-    pagination_class = [IsAdminOrOwner]
+    permission_classes = [IsAdminOrOwner]
     serializer_class = MyPlatformSerializer
 
     def get_queryset(self):
