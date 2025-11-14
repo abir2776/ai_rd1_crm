@@ -10,7 +10,6 @@ services:
       POSTGRES_PASSWORD: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    # No ports section - internal communication only
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -20,7 +19,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: django_redis
-    # No ports section - internal communication only
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -52,7 +50,7 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: django_celery_worker
-    command: celery -A swift_web_ai worker --loglevel=info
+    command: celery -A swift_web_ai worker --loglevel=info --concurrency=4
     volumes:
       - .:/app
     env_file:
@@ -70,9 +68,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: django_celery_beat
-    command: celery -A swift_web_ai beat --loglevel=info
+    command: celery -A swift_web_ai beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
     volumes:
       - .:/app
+      - celerybeat-schedule:/app/celerybeat-schedule
     env_file:
       - .env
     depends_on:
@@ -80,8 +79,30 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      web:
+        condition: service_started
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Optional: Flower for monitoring Celery tasks
+  flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: django_flower
+    command: celery -A swift_web_ai flower --port=5555
+    volumes:
+      - .:/app
+    ports:
+      - "5555:5555"
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
 volumes:
   postgres_data:
+  celerybeat-schedule:
