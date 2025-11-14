@@ -138,10 +138,6 @@ def fetch_platform_candidates(config):
             job_title = job.get("title")
             job_self_url = job.get("links", {}).get("self")
             applications_url = job.get("links", {}).get("applications")
-
-            if ad_id != 648689:
-                continue
-
             if not applications_url:
                 print(f"No applications link found for job: {job_title}")
                 continue
@@ -176,28 +172,30 @@ def fetch_platform_candidates(config):
 
                     if candidate_phone and not candidate_phone.startswith("+"):
                         candidate_phone = f"+{candidate_phone}"
-                    if application_id != 10898990:
-                        continue
+                    if (
+                        job.get("state") == config.jobad_status_for_calling
+                        and application.get("statusId")
+                        == config.application_status_for_calling
+                    ):
+                        candidate_data = {
+                            "to_number": candidate_phone,
+                            "from_phone_number": str(config.phone.phone_number),
+                            "organization_id": config.organization_id,
+                            "application_id": application_id,
+                            "candidate_id": candidate_id,
+                            "candidate_name": candidate_first_name,
+                            "job_title": job_title,
+                            "job_ad_id": ad_id,
+                            "job_details": job_details,
+                            "interview_type": "general",
+                            "primary_questions": primary_questions,
+                            "should_end_if_primary_question_failed": config.end_call_if_primary_answer_negative,
+                        }
 
-                    candidate_data = {
-                        "to_number": candidate_phone,
-                        "from_phone_number": str(config.phone.phone_number),
-                        "organization_id": config.organization_id,
-                        "application_id": application_id,
-                        "candidate_id": candidate_id,
-                        "candidate_name": candidate_first_name,
-                        "job_title": job_title,
-                        "job_ad_id": ad_id,
-                        "job_details": job_details,
-                        "interview_type": "general",
-                        "primary_questions": primary_questions,
-                        "should_end_if_primary_question_failed": config.end_call_if_primary_answer_negative,
-                    }
-
-                    candidates.append(candidate_data)
-                    print(
-                        f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
-                    )
+                        candidates.append(candidate_data)
+                        print(
+                            f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
+                        )
 
             except Exception as e:
                 print(f"Error fetching applications for job {job_title}: {str(e)}")

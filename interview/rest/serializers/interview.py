@@ -51,7 +51,7 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
                 payload = {"statusId": status_id}
 
                 try:
-                    response = requests.post(
+                    response = requests.put(
                         jobadder_api_url, json=payload, headers=headers, timeout=10
                     )
                     response.raise_for_status()
