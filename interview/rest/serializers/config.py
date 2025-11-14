@@ -6,7 +6,7 @@ from interview.models import (
     PrimaryQuestion,
     QuestionConfigConnection,
 )
-from organizations.models import Platform
+from organizations.models import OrganizationPlatform, Platform
 from organizations.rest.serializers.organization_platform import PlatformSerializer
 
 
@@ -57,7 +57,7 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
         platform_uid = validated_data.pop("platform_uid")
         primary_question_uids = validated_data.pop("primary_question_inputs", [])
 
-        platform = Platform.objects.filter(uid=platform_uid).first()
+        platform = OrganizationPlatform.objects.filter(uid=platform_uid).first()
         if not platform:
             raise serializers.ValidationError({"platform_uid": "Invalid platform UID"})
         questions = list(PrimaryQuestion.objects.filter(uid__in=primary_question_uids))
