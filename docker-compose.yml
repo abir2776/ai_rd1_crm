@@ -104,4 +104,3 @@ services:
 
 volumes:
   postgres_data:
-  celerybeat-schedule:
