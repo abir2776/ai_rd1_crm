@@ -1,4 +1,5 @@
 import os
+import time
 from datetime import datetime, timezone
 
 import requests
@@ -200,86 +201,87 @@ def fetch_platform_candidates(config):
 
         print(f"Found {len(jobs_data.get('items', []))} live jobs")
         for job in jobs_data.get("items", []):
-            ad_id = job.get("adId")
-            job_title = job.get("title")
-            job_self_url = job.get("links", {}).get("self")
-            applications_url = job.get("links", {}).get("applications")
-            if not applications_url:
-                print(f"No applications link found for job: {job_title}")
-                continue
-            job_details = fetch_job_details(job_self_url, config)
+            time.sleep(0.5)
+            if job.get("state") == config.jobad_status_for_calling:
+                ad_id = job.get("adId")
+                job_title = job.get("title")
+                job_self_url = job.get("links", {}).get("self")
+                applications_url = job.get("links", {}).get("applications")
+                if not applications_url:
+                    print(f"No applications link found for job: {job_title}")
+                    continue
+                job_details = fetch_job_details(job_self_url, config)
 
-            try:
-                applications_response = requests.get(
-                    applications_url,
-                    headers=headers,
-                    timeout=30,
-                )
-                if applications_response.status_code == 401:
-                    access_token = config.platform.refresh_access_token()
-                    if access_token:
-                        headers["Authorization"] = f"Bearer {access_token}"
-                        applications_response = requests.get(
-                            applications_url,
-                            headers=headers,
-                            timeout=30,
-                        )
+                try:
+                    applications_response = requests.get(
+                        applications_url,
+                        headers=headers,
+                        timeout=30,
+                    )
+                    if applications_response.status_code == 401:
+                        access_token = config.platform.refresh_access_token()
+                        if access_token:
+                            headers["Authorization"] = f"Bearer {access_token}"
+                            applications_response = requests.get(
+                                applications_url,
+                                headers=headers,
+                                timeout=30,
+                            )
 
-                applications_response.raise_for_status()
-                applications_data = applications_response.json()
+                    applications_response.raise_for_status()
+                    applications_data = applications_response.json()
 
-                for application in applications_data.get("items", []):
-                    application_id = application.get("applicationId")
-                    candidate = application.get("candidate", {})
-                    candidate_id = candidate.get("candidateId")
-                    candidate_first_name = candidate.get("firstName", "")
-                    candidate_last_name = candidate.get("lastName", "")
-                    candidate_phone = candidate.get("mobile", "")
-                    updated_at = application.get("updatedAt", "")
+                    for application in applications_data.get("items", []):
+                        application_id = application.get("applicationId")
+                        candidate = application.get("candidate", {})
+                        candidate_id = candidate.get("candidateId")
+                        candidate_first_name = candidate.get("firstName", "")
+                        candidate_last_name = candidate.get("lastName", "")
+                        candidate_phone = candidate.get("mobile", "")
+                        updated_at = application.get("updatedAt", "")
 
-                    if candidate_phone and not candidate_phone.startswith("+"):
-                        candidate_phone = f"+{candidate_phone}"
+                        if candidate_phone and not candidate_phone.startswith("+"):
+                            candidate_phone = f"+{candidate_phone}"
 
-                    # Check if job and application status match AND enough time has passed
-                    if (
-                        job.get("state") == config.jobad_status_for_calling
-                        and application.get("statusId")
-                        == config.application_status_for_calling
-                        and has_enough_time_passed(updated_at, waiting_duration)
-                    ):
-                        candidate_data = {
-                            "to_number": "+8801815553036",
-                            "from_phone_number": str(config.phone.phone_number),
-                            "organization_id": config.organization_id,
-                            "application_id": application_id,
-                            "candidate_id": candidate_id,
-                            "candidate_name": candidate_first_name,
-                            "job_title": job_title,
-                            "job_ad_id": ad_id,
-                            "job_details": job_details,
-                            "interview_type": "general",
-                            "primary_questions": primary_questions,
-                            "should_end_if_primary_question_failed": config.end_call_if_primary_answer_negative,
-                        }
+                        # Check if job and application status match AND enough time has passed
+                        if (
+                            application.get("statusId")
+                            == config.application_status_for_calling
+                            and has_enough_time_passed(updated_at, waiting_duration)
+                        ):
+                            candidate_data = {
+                                "to_number": "+8801815553036",
+                                "from_phone_number": str(config.phone.phone_number),
+                                "organization_id": config.organization_id,
+                                "application_id": application_id,
+                                "candidate_id": candidate_id,
+                                "candidate_name": candidate_first_name,
+                                "job_title": job_title,
+                                "job_ad_id": ad_id,
+                                "job_details": job_details,
+                                "interview_type": "general",
+                                "primary_questions": primary_questions,
+                                "should_end_if_primary_question_failed": config.end_call_if_primary_answer_negative,
+                            }
 
-                        candidates.append(candidate_data)
-                        print(
-                            f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
-                        )
-                        break
-                    elif (
-                        job.get("state") == config.jobad_status_for_calling
-                        and application.get("statusId")
-                        == config.application_status_for_calling
-                    ):
-                        print(
-                            f"Skipped candidate: {candidate_first_name} {candidate_last_name} - "
-                            f"waiting period not elapsed (updated: {updated_at})"
-                        )
+                            candidates.append(candidate_data)
+                            print(
+                                f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
+                            )
+                            break
+                        elif (
+                            job.get("state") == config.jobad_status_for_calling
+                            and application.get("statusId")
+                            == config.application_status_for_calling
+                        ):
+                            print(
+                                f"Skipped candidate: {candidate_first_name} {candidate_last_name} - "
+                                f"waiting period not elapsed (updated: {updated_at})"
+                            )
 
-            except Exception as e:
-                print(f"Error fetching applications for job {job_title}: {str(e)}")
-                continue
+                except Exception as e:
+                    print(f"Error fetching applications for job {job_title}: {str(e)}")
+                    continue
 
         print(f"Total candidates collected: {len(candidates)}")
         return candidates
