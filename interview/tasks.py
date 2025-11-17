@@ -248,7 +248,7 @@ def fetch_platform_candidates(config):
                         and has_enough_time_passed(updated_at, waiting_duration)
                     ):
                         candidate_data = {
-                            "to_number": candidate_phone,
+                            "to_number": "+8801815553036",
                             "from_phone_number": str(config.phone.phone_number),
                             "organization_id": config.organization_id,
                             "application_id": application_id,
@@ -266,6 +266,7 @@ def fetch_platform_candidates(config):
                         print(
                             f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
                         )
+                        break
                     elif (
                         job.get("state") == config.jobad_status_for_calling
                         and application.get("statusId")
