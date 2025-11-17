@@ -240,13 +240,14 @@ def fetch_platform_candidates(config):
                         candidate_last_name = candidate.get("lastName", "")
                         candidate_phone = candidate.get("mobile", "")
                         updated_at = application.get("updatedAt", "")
+                        status = application.get("status")
 
                         if candidate_phone and not candidate_phone.startswith("+"):
                             candidate_phone = f"+{candidate_phone}"
 
                         # Check if job and application status match AND enough time has passed
                         if (
-                            application.get("statusId")
+                            status.get("statusId")
                             == config.application_status_for_calling
                             and has_enough_time_passed(updated_at, waiting_duration)
                         ):
