@@ -201,6 +201,7 @@ def fetch_platform_candidates(config):
 
         print(f"Found {len(jobs_data.get('items', []))} live jobs")
         for job in jobs_data.get("items", []):
+            temp = False
             time.sleep(0.5)
             if job.get("state") == config.jobad_status_for_calling:
                 ad_id = job.get("adId")
@@ -268,6 +269,7 @@ def fetch_platform_candidates(config):
                             print(
                                 f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
                             )
+                            temp = True
                             break
                         elif (
                             job.get("state") == config.jobad_status_for_calling
@@ -278,6 +280,8 @@ def fetch_platform_candidates(config):
                                 f"Skipped candidate: {candidate_first_name} {candidate_last_name} - "
                                 f"waiting period not elapsed (updated: {updated_at})"
                             )
+                    if temp:
+                        break
 
                 except Exception as e:
                     print(f"Error fetching applications for job {job_title}: {str(e)}")
