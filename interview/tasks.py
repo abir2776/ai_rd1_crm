@@ -163,7 +163,7 @@ def has_enough_time_passed(updated_at_str: str, waiting_duration_minutes: int) -
 def fetch_platform_candidates(config):
     access_token = config.platform.access_token
     primary_questions = config.get_primary_questions()
-    waiting_duration = int(getattr(config, "calling_time_after_status_update", 0))
+    waiting_duration = 15
 
     if not access_token:
         print("Error: Could not get JobAdder access token")
