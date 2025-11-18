@@ -1,7 +1,6 @@
 # Multi-stage build for production optimization
 FROM python:3.13-slim AS base
 
-# Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
@@ -21,14 +20,22 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project files
+# Copy project
 COPY . .
 
-RUN mkdir -p /app/media /app/static \
-    && chown -R appuser:appuser /app
+# Create media + static BEFORE assigning user
+RUN mkdir -p /app/media /app/static
 
+# Create non-root user
+RUN useradd -m -u 1000 appuser
+
+# Give permissions to appuser
+RUN chown -R appuser:appuser /app
+
+# Switch to non-root user
 USER appuser
 
+# Collect static (ignore errors)
 RUN python manage.py collectstatic --noinput || true
 
 EXPOSE 8000
