@@ -33,6 +33,7 @@ services:
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
       - .:/app
+      - media_data:/app/media
     ports:
       - "8000:8000"
     env_file:
@@ -53,6 +54,7 @@ services:
     command: celery -A swift_web_ai worker --loglevel=info --concurrency=4
     volumes:
       - .:/app
+      - media_data:/app/media
     env_file:
       - .env
     depends_on:
@@ -72,6 +74,7 @@ services:
     user: root
     volumes:
       - .:/app
+      - media_data:/app/media
     env_file:
       - .env
     depends_on:
@@ -83,7 +86,6 @@ services:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
 
-  # Optional: Flower for monitoring Celery tasks
   flower:
     build:
       context: .
@@ -92,6 +94,7 @@ services:
     command: celery -A swift_web_ai flower --port=5555
     volumes:
       - .:/app
+      - media_data:/app/media
     ports:
       - "5555:5555"
     env_file:
@@ -104,3 +107,4 @@ services:
 
 volumes:
   postgres_data:
+  media_data:
