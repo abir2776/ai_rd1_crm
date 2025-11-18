@@ -112,7 +112,7 @@ def update_application_status_after_call(organization_id: int, application_id: i
             )
             return
 
-        jobadder_api_url = f"{config.platform.base_url}/applications/{application_id}"
+        jobadder_api_url = f"{config.platform.base_url}applications/{application_id}"
 
         access_token = config.platform.access_token
         headers = {
@@ -221,7 +221,6 @@ def fetch_platform_candidates(config):
         print(f"Found {len(jobs_data.get('items', []))} live jobs")
         for job in jobs_data.get("items", []):
             time.sleep(0.5)
-            temp = False
             if job.get("state") == config.jobad_status_for_calling:
                 ad_id = job.get("adId")
                 job_title = job.get("title")
@@ -271,7 +270,7 @@ def fetch_platform_candidates(config):
                             and has_enough_time_passed(updated_at, waiting_duration)
                         ):
                             candidate_data = {
-                                "to_number": "+8801815553036",
+                                "to_number": candidate_phone,
                                 "from_phone_number": str(config.phone.phone_number),
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
@@ -288,11 +287,9 @@ def fetch_platform_candidates(config):
                             }
 
                             candidates.append(candidate_data)
-                            temp = True
                             print(
                                 f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
                             )
-                            break
                         elif (
                             job.get("state") == config.jobad_status_for_calling
                             and application.get("statusId")
@@ -302,8 +299,6 @@ def fetch_platform_candidates(config):
                                 f"Skipped candidate: {candidate_first_name} {candidate_last_name} - "
                                 f"waiting period not elapsed (updated: {updated_at})"
                             )
-                    if temp:
-                        break
 
                 except Exception as e:
                     print(f"Error fetching applications for job {job_title}: {str(e)}")
@@ -360,4 +355,5 @@ def initiate_all_interview():
         organization_id__in=organization_ids, available_limit__gt=0
     ).values_list("organization_id", flat=True)
     for organization_id in subscribed_organization_ids:
+        print(f"Initiated bulk interview call for organization_{organization_id}")
         bulk_interview_calls.delay(organization_id)
