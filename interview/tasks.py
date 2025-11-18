@@ -29,6 +29,8 @@ def make_interview_call(
     job_details: dict = None,
     primary_questions: list = [],
     should_end_if_primary_question_failed: bool = False,
+    welcome_message_audio_url: str = None,
+    voice_id: str = "21m00Tcm4TlvDq8ikWAM",
 ):
     try:
         payload = {
@@ -44,6 +46,8 @@ def make_interview_call(
             "interview_type": interview_type,
             "primary_questions": primary_questions,
             "should_end_if_primary_question_failed": should_end_if_primary_question_failed,
+            "welcome_message_audio_url": welcome_message_audio_url,
+            "voice_id": voice_id,
         }
 
         response = requests.post(
@@ -159,11 +163,26 @@ def has_enough_time_passed(updated_at_str: str, waiting_duration_minutes: int) -
         return False
 
 
+def get_welcome_message_audio_url(config):
+    """Get the full URL for the welcome message audio file"""
+    if config.welcome_message_audio:
+        # If using Django storage backend, get the full URL
+        try:
+            return config.welcome_message_audio.url
+        except:
+            # Fallback: construct URL manually if needed
+            from django.conf import settings
+
+            return f"{settings.MEDIA_URL}{config.welcome_message_audio.name}"
+    return None
+
+
 @shared_task
 def fetch_platform_candidates(config):
     access_token = config.platform.access_token
     primary_questions = config.get_primary_questions()
-    waiting_duration = 15
+    waiting_duration = config.calling_time_after_status_update
+    welcome_audio_url = get_welcome_message_audio_url(config)
 
     if not access_token:
         print("Error: Could not get JobAdder access token")
@@ -201,7 +220,6 @@ def fetch_platform_candidates(config):
 
         print(f"Found {len(jobs_data.get('items', []))} live jobs")
         for job in jobs_data.get("items", []):
-            temp = False
             time.sleep(0.5)
             if job.get("state") == config.jobad_status_for_calling:
                 ad_id = job.get("adId")
@@ -252,7 +270,7 @@ def fetch_platform_candidates(config):
                             and has_enough_time_passed(updated_at, waiting_duration)
                         ):
                             candidate_data = {
-                                "to_number": "+8801815553036",
+                                "to_number": candidate_phone,
                                 "from_phone_number": str(config.phone.phone_number),
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
@@ -264,14 +282,14 @@ def fetch_platform_candidates(config):
                                 "interview_type": "general",
                                 "primary_questions": primary_questions,
                                 "should_end_if_primary_question_failed": config.end_call_if_primary_answer_negative,
+                                "welcome_message_audio_url": welcome_audio_url,
+                                "voice_id": config.voice_id,
                             }
 
                             candidates.append(candidate_data)
                             print(
                                 f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
                             )
-                            temp = True
-                            break
                         elif (
                             job.get("state") == config.jobad_status_for_calling
                             and application.get("statusId")
@@ -281,8 +299,6 @@ def fetch_platform_candidates(config):
                                 f"Skipped candidate: {candidate_first_name} {candidate_last_name} - "
                                 f"waiting period not elapsed (updated: {updated_at})"
                             )
-                    if temp:
-                        break
 
                 except Exception as e:
                     print(f"Error fetching applications for job {job_title}: {str(e)}")
@@ -325,6 +341,8 @@ def bulk_interview_calls(organization_id: int = None):
                 candidate.get("job_details"),
                 candidate.get("primary_questions"),
                 candidate.get("should_end_if_primary_question_failed"),
+                candidate.get("welcome_message_audio_url"),
+                candidate.get("voice_id"),
             ],
             countdown=countdown,
         )
