@@ -31,9 +31,10 @@ services:
       dockerfile: Dockerfile
     container_name: django_web
     command: gunicorn swift_web_ai.wsgi:application --bind 0.0.0.0:8000 --workers 4
+    user: "1000:1000"  # Match the appuser UID:GID
     volumes:
-      - ./media:/app/media
-      - ./static:/app/static
+      - media_data:/app/media  # Use named volume instead of bind mount
+      - static_data:/app/static  # Use named volume instead of bind mount
     ports:
       - "8000:8000"
     env_file:
@@ -52,9 +53,10 @@ services:
       dockerfile: Dockerfile
     container_name: django_celery_worker
     command: celery -A swift_web_ai worker --loglevel=info --concurrency=4
+    user: "1000:1000"  # Match the appuser UID:GID
     volumes:
-      - ./media:/app/media
-      - ./static:/app/static
+      - media_data:/app/media
+      - static_data:/app/static
     env_file:
       - .env
     depends_on:
@@ -70,11 +72,11 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: django_celery_beat
-    command: celery -A swift_web_ai beat --loglevel=info
-    user: root
+    command: celery -A swift_web_ai beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    user: "1000:1000"  # Changed from root to appuser
     volumes:
-      - ./media:/app/media
-      - ./static:/app/static
+      - media_data:/app/media
+      - static_data:/app/static
     env_file:
       - .env
     depends_on:
@@ -92,9 +94,10 @@ services:
       dockerfile: Dockerfile
     container_name: django_flower
     command: celery -A swift_web_ai flower --port=5555
+    user: "1000:1000"  # Match the appuser UID:GID
     volumes:
-      - ./media:/app/media
-      - ./static:/app/static
+      - media_data:/app/media
+      - static_data:/app/static
     ports:
       - "5555:5555"
     env_file:
@@ -107,4 +110,5 @@ services:
 
 volumes:
   postgres_data:
-  media_data:
+  media_data:  # Named volume for media files
+  static_data:  # Named volume for static files

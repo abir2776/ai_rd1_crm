@@ -16,21 +16,19 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+# Create non-root user FIRST
+RUN useradd -m -u 1000 appuser
+
 # Install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project
-COPY . .
+COPY --chown=appuser:appuser . .
 
-# Create media + static BEFORE assigning user
-RUN mkdir -p /app/media /app/static
-
-# Create non-root user
-RUN useradd -m -u 1000 appuser
-
-# Give permissions to appuser
-RUN chown -R appuser:appuser /app
+# Create media + static directories with correct ownership
+RUN mkdir -p /app/media /app/static && \
+    chown -R appuser:appuser /app/media /app/static
 
 # Switch to non-root user
 USER appuser
