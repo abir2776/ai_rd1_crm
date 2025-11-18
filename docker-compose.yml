@@ -72,11 +72,12 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: django_celery_beat
-    command: celery -A swift_web_ai beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    command: celery -A swift_web_ai beat --loglevel=info
     user: "1000:1000"  # Changed from root to appuser
     volumes:
       - media_data:/app/media
       - static_data:/app/static
+      - celerybeat_data:/app/celerybeat  # Volume for beat schedule file
     env_file:
       - .env
     depends_on:
