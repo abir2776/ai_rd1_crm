@@ -24,13 +24,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy project files
 COPY . .
 
-# Create non-root user for security
-RUN useradd -m -u 1000 appuser && \
-    chown -R appuser:appuser /app
+RUN mkdir -p /app/media /app/static \
+    && chown -R appuser:appuser /app
 
 USER appuser
 
-# Collect static files (for production)
 RUN python manage.py collectstatic --noinput || true
 
 EXPOSE 8000

@@ -30,10 +30,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: django_web
-    command: python manage.py runserver 0.0.0.0:8000
+    command: gunicorn swift_web_ai.wsgi:application --bind 0.0.0.0:8000 --workers 4
     volumes:
-      - .:/app
-      - media_data:/app/media
+      - ./media:/app/media
+      - ./static:/app/static
     ports:
       - "8000:8000"
     env_file:
@@ -53,8 +53,8 @@ services:
     container_name: django_celery_worker
     command: celery -A swift_web_ai worker --loglevel=info --concurrency=4
     volumes:
-      - .:/app
-      - media_data:/app/media
+      - ./media:/app/media
+      - ./static:/app/static
     env_file:
       - .env
     depends_on:
@@ -73,8 +73,9 @@ services:
     command: celery -A swift_web_ai beat --loglevel=info
     user: root
     volumes:
-      - .:/app
-      - media_data:/app/media
+      volumes:
+      - ./media:/app/media
+      - ./static:/app/static
     env_file:
       - .env
     depends_on:
@@ -93,8 +94,8 @@ services:
     container_name: django_flower
     command: celery -A swift_web_ai flower --port=5555
     volumes:
-      - .:/app
-      - media_data:/app/media
+      - ./media:/app/media
+      - ./static:/app/static
     ports:
       - "5555:5555"
     env_file:
