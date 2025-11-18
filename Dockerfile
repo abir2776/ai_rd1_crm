@@ -27,8 +27,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY --chown=appuser:appuser . .
 
 # Create media + static directories with correct ownership
-RUN mkdir -p /app/media /app/static && \
-    chown -R appuser:appuser /app/media /app/static
+RUN mkdir -p /app/media /app/static /app/celerybeat && \
+    chown -R appuser:appuser /app/media /app/static /app/celerybeat
 
 # Switch to non-root user
 USER appuser
