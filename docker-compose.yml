@@ -73,7 +73,6 @@ services:
     command: celery -A swift_web_ai beat --loglevel=info
     user: root
     volumes:
-      volumes:
       - ./media:/app/media
       - ./static:/app/static
     env_file:
