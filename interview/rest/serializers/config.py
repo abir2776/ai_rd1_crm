@@ -50,6 +50,7 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
             "primary_questions",
             "welcome_message",
             "welcome_message_audio",
+            "voice_id",
         ]
         read_only_fields = ["uid", "platform", "welcome_message_audio"]
 
