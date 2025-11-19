@@ -6,7 +6,7 @@ from organizations.models import Organization
 
 
 class InterviewTakenSerializer(serializers.ModelSerializer):
-    organization_id = serializers.IntegerField(write_only=True)
+    organization_id = serializers.IntegerField(write_only=True, required=False)
 
     class Meta:
         model = InterviewTaken

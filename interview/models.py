@@ -19,17 +19,17 @@ class InterviewType(BaseModelWithUID):
 
 class InterviewTaken(BaseModelWithUID):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
-    application_id = models.PositiveIntegerField()
-    candidate_id = models.PositiveIntegerField()
-    job_id = models.PositiveIntegerField()
+    application_id = models.PositiveIntegerField(null=True, blank=True)
+    candidate_id = models.PositiveIntegerField(null=True, blank=True)
+    job_id = models.PositiveIntegerField(null=True, blank=True)
     interview_status = models.CharField(max_length=100, null=True, blank=True)
     ai_dicision = models.CharField(max_length=100, null=True, blank=True)
-    started_at = models.DateTimeField()
-    ended_at = models.DateTimeField()
-    call_sid = models.CharField(max_length=100)
-    call_duration = models.CharField(max_length=100)
-    call_status = models.CharField(max_length=100)
-    disconnection_reason = models.CharField(max_length=100)
+    started_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+    call_sid = models.CharField(max_length=100, null=True, blank=True)
+    call_duration = models.CharField(max_length=100, null=True, blank=True)
+    call_status = models.CharField(max_length=100, null=True, blank=True)
+    disconnection_reason = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return (
