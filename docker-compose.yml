@@ -32,7 +32,7 @@ services:
     user: "1000:1000"
     volumes:
       - media_data:/app/media
-      - static_data:/app/static
+      - ./static:/app/static
     ports:
       - "8000:8000"
     env_file:
@@ -54,7 +54,7 @@ services:
     user: "1000:1000"
     volumes:
       - media_data:/app/media
-      - static_data:/app/static
+      - ./static:/app/static
     env_file:
       - .env
     depends_on:
@@ -74,7 +74,7 @@ services:
     user: "1000:1000"
     volumes:
       - media_data:/app/media
-      - static_data:/app/static
+      - ./static:/app/static
       - celerybeat_data:/app/celerybeat
     env_file:
       - .env
@@ -96,7 +96,7 @@ services:
     user: "1000:1000"
     volumes:
       - media_data:/app/media
-      - static_data:/app/static
+      - ./static:/app/static
     ports:
       - "5555:5555"
     env_file:
