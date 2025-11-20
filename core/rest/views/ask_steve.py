@@ -28,27 +28,29 @@ def get_calendar_service():
         credentials = service_account.Credentials.from_service_account_info(
             creds_data, scopes=["https://www.googleapis.com/auth/calendar"]
         )
-
         service = build("calendar", "v3", credentials=credentials)
         return service
     except Exception as e:
         raise Exception(f"Failed to initialize Google Calendar: {str(e)}")
 
 
-def get_busy_times(service, days_ahead=7):
+def get_busy_times(service, days_ahead=7, calendar_id="your-email@gmail.com"):
     """
     Get busy times from Google Calendar using freebusy query
     """
     try:
-        # Define time range
         now = datetime.utcnow()
         time_min = now.isoformat() + "Z"
         time_max = (now + timedelta(days=days_ahead)).isoformat() + "Z"
 
-        body = {"timeMin": time_min, "timeMax": time_max, "items": [{"id": "primary"}]}
+        body = {
+            "timeMin": time_min,
+            "timeMax": time_max,
+            "items": [{"id": calendar_id}],  # Use specific calendar
+        }
 
         events_result = service.freebusy().query(body=body).execute()
-        busy_times = events_result["calendars"]["primary"]["busy"]
+        busy_times = events_result["calendars"][calendar_id]["busy"]
 
         return busy_times
     except Exception as e:
@@ -159,7 +161,14 @@ def get_fallback_slots(days_ahead=7):
     return slots[:10]
 
 
-def create_calendar_event(summary, description, start_time, end_time, attendee_email):
+def create_calendar_event(
+    summary,
+    description,
+    start_time,
+    end_time,
+    attendee_email,
+    calendar_id="your-email@gmail.com",
+):
     """
     Create a Google Calendar event
     """
@@ -196,10 +205,10 @@ def create_calendar_event(summary, description, start_time, end_time, attendee_e
         event = (
             service.events()
             .insert(
-                calendarId="primary",
+                calendarId=calendar_id,  # Use specific calendar
                 body=event,
                 conferenceDataVersion=1,
-                sendUpdates="all",  # Send email notifications
+                sendUpdates="all",
             )
             .execute()
         )
