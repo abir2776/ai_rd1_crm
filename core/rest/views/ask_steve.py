@@ -208,6 +208,7 @@ def create_calendar_event(
     attendee_email,
     attendee_name,
     user_interest,
+    meeting_link=None,  # Add custom meeting link parameter
     calendar_id="osmangoni255@gmail.com",
 ):
     """
@@ -216,9 +217,17 @@ def create_calendar_event(
     try:
         service = get_calendar_service()
 
-        # Enhanced description with attendee information
+        # Use custom meeting link or default
+        if not meeting_link:
+            meeting_link = os.getenv(
+                "DEFAULT_MEETING_LINK", "https://meet.google.com/your-default-link"
+            )
+
+        # Enhanced description with attendee information and meeting link
         enhanced_description = (
             f"{description}\n\n"
+            f"🔗 MEETING LINK\n"
+            f"{meeting_link}\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"👤 ATTENDEE INFORMATION\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -238,12 +247,7 @@ def create_calendar_event(
                 "dateTime": end_time,
                 "timeZone": "UTC",
             },
-            "conferenceData": {
-                "createRequest": {
-                    "requestId": f"meeting-{datetime.now().timestamp()}",
-                    "conferenceSolutionKey": {"type": "hangoutsMeet"},
-                }
-            },
+            "location": meeting_link,  # Add meeting link as location
             "reminders": {
                 "useDefault": False,
                 "overrides": [
@@ -253,12 +257,12 @@ def create_calendar_event(
             },
         }
 
-        event = (
+        # Create event WITHOUT conferenceDataVersion parameter
+        created_event = (
             service.events()
             .insert(
                 calendarId=calendar_id,
                 body=event,
-                conferenceDataVersion=1,
             )
             .execute()
         )
@@ -267,8 +271,7 @@ def create_calendar_event(
         start_dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
         formatted_time = start_dt.strftime("%A, %B %d, %Y at %I:%M %p UTC")
 
-        meeting_link = event.get("hangoutLink")
-        event_link = event.get("htmlLink")
+        event_link = created_event.get("htmlLink")
 
         # Send confirmation email to attendee
         email_sent = send_meeting_confirmation_email(
@@ -284,7 +287,7 @@ def create_calendar_event(
             "success": True,
             "event_link": event_link,
             "meeting_link": meeting_link,
-            "event_id": event.get("id"),
+            "event_id": created_event.get("id"),
             "attendee_email": attendee_email,
             "attendee_name": attendee_name,
             "meeting_time": formatted_time,
@@ -382,6 +385,11 @@ class AIRecruiterChatView(APIView):
             start_dt = datetime.fromisoformat(meeting_datetime.replace("Z", "+00:00"))
             end_dt = start_dt + timedelta(hours=1)
 
+            # Get custom meeting link from environment variable
+            custom_meeting_link = os.getenv(
+                "MEETING_LINK", "https://meet.google.com/your-meeting-room"
+            )
+
             # Create calendar event and send email
             result = create_calendar_event(
                 summary=f"Meeting with {user_name} - {user_interest}",
@@ -391,6 +399,7 @@ class AIRecruiterChatView(APIView):
                 attendee_email=user_email,
                 attendee_name=user_name,
                 user_interest=user_interest,
+                meeting_link=custom_meeting_link,  # Pass custom meeting link
             )
 
             return result
