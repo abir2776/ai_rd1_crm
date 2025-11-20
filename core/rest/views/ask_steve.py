@@ -12,6 +12,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.tasks import send_email_task
+
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -46,7 +48,7 @@ def get_busy_times(service, days_ahead=7, calendar_id="osmangoni255@gmail.com"):
         body = {
             "timeMin": time_min,
             "timeMax": time_max,
-            "items": [{"id": calendar_id}],  # Use specific calendar
+            "items": [{"id": calendar_id}],
         }
 
         events_result = service.freebusy().query(body=body).execute()
@@ -161,23 +163,73 @@ def get_fallback_slots(days_ahead=7):
     return slots[:10]
 
 
+def send_meeting_confirmation_email(
+    attendee_email, attendee_name, meeting_time, meeting_link, event_link, user_interest
+):
+    """
+    Send meeting confirmation email to the attendee
+    """
+    try:
+        # Format the meeting time for display
+        meeting_dt = datetime.fromisoformat(meeting_time.replace("Z", "+00:00"))
+        formatted_date = meeting_dt.strftime("%A, %B %d, %Y")
+        formatted_time = meeting_dt.strftime("%I:%M %p UTC")
+
+        context = {
+            "attendee_name": attendee_name,
+            "meeting_date": formatted_date,
+            "meeting_time": formatted_time,
+            "meeting_link": meeting_link,
+            "event_link": event_link,
+            "user_interest": user_interest,
+        }
+
+        subject = f"Meeting Confirmed: {user_interest} - {formatted_date}"
+
+        # Send email asynchronously using Celery
+        send_email_task.delay(
+            subject=subject,
+            recipient=attendee_email,
+            template_name="emails/meeting_confirmation.html",
+            context=context,
+        )
+
+        return True
+    except Exception as e:
+        print(f"Error sending confirmation email: {str(e)}")
+        return False
+
+
 def create_calendar_event(
     summary,
     description,
     start_time,
     end_time,
     attendee_email,
+    attendee_name,
+    user_interest,
     calendar_id="osmangoni255@gmail.com",
 ):
     """
-    Create a Google Calendar event
+    Create a Google Calendar event and send confirmation email
     """
     try:
         service = get_calendar_service()
 
+        # Enhanced description with attendee information
+        enhanced_description = (
+            f"{description}\n\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"👤 ATTENDEE INFORMATION\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"Name: {attendee_name}\n"
+            f"Email: {attendee_email}\n"
+            f"Interest: {user_interest}\n"
+        )
+
         event = {
             "summary": summary,
-            "description": description,
+            "description": enhanced_description,
             "start": {
                 "dateTime": start_time,
                 "timeZone": "UTC",
@@ -186,7 +238,6 @@ def create_calendar_event(
                 "dateTime": end_time,
                 "timeZone": "UTC",
             },
-            "attendees": [{"email": attendee_email}],
             "conferenceData": {
                 "createRequest": {
                     "requestId": f"meeting-{datetime.now().timestamp()}",
@@ -205,22 +256,43 @@ def create_calendar_event(
         event = (
             service.events()
             .insert(
-                calendarId=calendar_id,  # Use specific calendar
+                calendarId=calendar_id,
                 body=event,
                 conferenceDataVersion=1,
-                sendUpdates="all",
             )
             .execute()
         )
 
+        # Format meeting time for display
+        start_dt = datetime.fromisoformat(start_time.replace("Z", "+00:00"))
+        formatted_time = start_dt.strftime("%A, %B %d, %Y at %I:%M %p UTC")
+
+        meeting_link = event.get("hangoutLink")
+        event_link = event.get("htmlLink")
+
+        # Send confirmation email to attendee
+        email_sent = send_meeting_confirmation_email(
+            attendee_email=attendee_email,
+            attendee_name=attendee_name,
+            meeting_time=start_time,
+            meeting_link=meeting_link,
+            event_link=event_link,
+            user_interest=user_interest,
+        )
+
         return {
             "success": True,
-            "event_link": event.get("htmlLink"),
-            "meeting_link": event.get("hangoutLink"),
+            "event_link": event_link,
+            "meeting_link": meeting_link,
             "event_id": event.get("id"),
-            "message": "Meeting scheduled successfully!",
+            "attendee_email": attendee_email,
+            "attendee_name": attendee_name,
+            "meeting_time": formatted_time,
+            "email_sent": email_sent,
+            "message": "Meeting scheduled successfully! Confirmation email sent.",
         }
     except Exception as e:
+        print(f"Error creating calendar event: {str(e)}")
         return {
             "success": False,
             "error": str(e),
@@ -252,7 +324,7 @@ tools = [
         "type": "function",
         "function": {
             "name": "schedule_meeting",
-            "description": "Schedule a meeting with a user on Google Calendar",
+            "description": "Schedule a meeting with a user on Google Calendar and send confirmation email",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -310,13 +382,15 @@ class AIRecruiterChatView(APIView):
             start_dt = datetime.fromisoformat(meeting_datetime.replace("Z", "+00:00"))
             end_dt = start_dt + timedelta(hours=1)
 
-            # Create calendar event
+            # Create calendar event and send email
             result = create_calendar_event(
                 summary=f"Meeting with {user_name} - {user_interest}",
-                description=f"Meeting scheduled with {user_name} ({user_email}) to discuss: {user_interest}\n\nScheduled via RecruiterAI platform.",
+                description=f"Meeting scheduled with {user_name} to discuss: {user_interest}\n\nScheduled via RecruiterAI platform.",
                 start_time=start_dt.isoformat(),
                 end_time=end_dt.isoformat(),
                 attendee_email=user_email,
+                attendee_name=user_name,
+                user_interest=user_interest,
             )
 
             return result
@@ -346,10 +420,13 @@ class AIRecruiterChatView(APIView):
                 "- Use the get_available_meeting_slots function to fetch real-time available slots from Google Calendar.\n"
                 "- Present the available slots in a clear, organized manner.\n"
                 "- Once the user selects a time slot and provides their details, use the schedule_meeting function.\n"
-                "- After successful scheduling, confirm the meeting details and inform them they'll receive a "
-                "calendar invite via email with a Google Meet link.\n"
+                "- After successful scheduling, inform the user that:\n"
+                "  1. The meeting has been confirmed\n"
+                "  2. They will receive a confirmation email with all the details\n"
+                "  3. The email includes the Google Meet link to join the meeting\n"
+                "  4. They can also add the meeting to their calendar using the link provided\n"
                 "- Be friendly, professional, and helpful throughout the scheduling process.\n"
-                "- If no slots are available, politely suggest alternative contact methods."
+                "- If scheduling fails, apologize and offer alternative contact methods."
             )
 
             full_messages = [
