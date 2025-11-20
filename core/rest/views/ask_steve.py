@@ -34,7 +34,7 @@ def get_calendar_service():
         raise Exception(f"Failed to initialize Google Calendar: {str(e)}")
 
 
-def get_busy_times(service, days_ahead=7, calendar_id="your-email@gmail.com"):
+def get_busy_times(service, days_ahead=7, calendar_id="osmangoni255@gmail.com"):
     """
     Get busy times from Google Calendar using freebusy query
     """
@@ -167,7 +167,7 @@ def create_calendar_event(
     start_time,
     end_time,
     attendee_email,
-    calendar_id="your-email@gmail.com",
+    calendar_id="osmangoni255@gmail.com",
 ):
     """
     Create a Google Calendar event
