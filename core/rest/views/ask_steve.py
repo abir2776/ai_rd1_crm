@@ -19,7 +19,7 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 def get_calendar_service():
     """Initialize Google Calendar service with service account"""
     try:
-        creds_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+        creds_json = os.getenv("GOOGLE_CALENDAR_CREDENTIALS_JSON")
         if not creds_json:
             raise Exception("Service account credentials not configured")
 
