@@ -1,32 +1,35 @@
-import os
 import json
+import os
+from datetime import datetime, timedelta
+
+import pytz
 from dotenv import load_dotenv
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
 from openai import OpenAI
-from rest_framework.views import APIView
+from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework import status
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from datetime import datetime, timedelta
-import pytz
+from rest_framework.views import APIView
 
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
-# Google Calendar helper functions
 def get_calendar_service():
-    """Initialize and return Google Calendar service"""
+    """Initialize Google Calendar service with service account"""
     try:
-        creds_json = os.getenv("GOOGLE_CALENDAR_CREDENTIALS_JSON")
+        creds_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
         if not creds_json:
-            raise Exception("Google Calendar credentials not configured")
+            raise Exception("Service account credentials not configured")
 
         creds_data = json.loads(creds_json)
-        creds = Credentials.from_authorized_user_info(creds_data)
 
-        service = build("calendar", "v3", credentials=creds)
+        credentials = service_account.Credentials.from_service_account_info(
+            creds_data, scopes=["https://www.googleapis.com/auth/calendar"]
+        )
+
+        service = build("calendar", "v3", credentials=credentials)
         return service
     except Exception as e:
         raise Exception(f"Failed to initialize Google Calendar: {str(e)}")
