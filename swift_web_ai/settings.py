@@ -196,3 +196,4 @@ CSRF_TRUSTED_ORIGINS = [
     "http://api.swiftwave.ai",
 ]
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+SITE_URL = os.getenv("SITE_URL")

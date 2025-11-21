@@ -1,9 +1,12 @@
 import os
 import time
+import uuid
 from datetime import datetime, timezone
 
 import requests
 from celery import shared_task
+from django.conf import settings
+from django.core.files.base import ContentFile
 from dotenv import load_dotenv
 
 from interview.models import AIPhoneCallConfig
@@ -13,6 +16,70 @@ from subscription.models import Subscription
 load_dotenv()
 
 BASE_API_URL = os.getenv("CALLING_BASE_URL", "http://localhost:5050")
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
+ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech"
+
+
+def generate_welcome_audio(
+    organization_name: str, job_title: str, voice_id: str
+) -> str:
+    """
+    Generate welcome message audio using ElevenLabs TTS.
+    Returns the URL of the saved audio file.
+    """
+    welcome_text = (
+        f"Welcome to the {organization_name} Platform and thank you for your "
+        f"application for the {job_title} position. May I talk with you for "
+        f"some moments please?"
+    )
+
+    headers = {
+        "Accept": "audio/mpeg",
+        "Content-Type": "application/json",
+        "xi-api-key": ELEVENLABS_API_KEY,
+    }
+
+    payload = {
+        "text": welcome_text,
+        "model_id": "eleven_monolingual_v1",
+        "voice_settings": {
+            "stability": 0.5,
+            "similarity_boost": 0.5,
+        },
+    }
+
+    try:
+        response = requests.post(
+            f"{ELEVENLABS_API_URL}/{voice_id}",
+            json=payload,
+            headers=headers,
+            timeout=30,
+        )
+        response.raise_for_status()
+
+        # Save the audio file
+        filename = f"welcome_messages/{uuid.uuid4()}.mp3"
+
+        # Using Django's default storage
+        from django.core.files.storage import default_storage
+
+        file_path = default_storage.save(filename, ContentFile(response.content))
+        audio_url = default_storage.url(file_path)
+
+        # If using S3 or similar, this returns full URL
+        # If using local storage, you may need to prepend your domain
+        if not audio_url.startswith("http"):
+            audio_url = f"{settings.SITE_URL}{audio_url}"
+
+        print(f"Generated welcome audio: {audio_url}")
+        return audio_url, welcome_text
+
+    except requests.RequestException as e:
+        print(f"Error generating welcome audio: {str(e)}")
+        return None
+    except Exception as e:
+        print(f"Unexpected error generating welcome audio: {str(e)}")
+        return None
 
 
 @shared_task(max_retries=3)
@@ -30,7 +97,8 @@ def make_interview_call(
     primary_questions: list = [],
     should_end_if_primary_question_failed: bool = False,
     welcome_message_audio_url: str = None,
-    voice_id: str = "21m00Tcm4TlvDq8ikWAM",
+    welcome_text: str = None,
+    voice_id: str = "SQ1QAX1hsTZ1d6O0dCWA",
 ):
     try:
         payload = {
@@ -47,6 +115,7 @@ def make_interview_call(
             "primary_questions": primary_questions,
             "should_end_if_primary_question_failed": should_end_if_primary_question_failed,
             "welcome_message_audio_url": welcome_message_audio_url,
+            "welcome_text": welcome_text,
             "voice_id": voice_id,
         }
 
@@ -77,7 +146,7 @@ def fetch_job_details(job_self_url: str, config):
             access_token = config.platform.refresh_access_token()
             if not access_token:
                 print("Error: Could not refresh access token")
-                return []
+                return {}
 
             headers["Authorization"] = f"Bearer {access_token}"
             response = requests.get(job_self_url, headers=headers, timeout=30)
@@ -103,7 +172,6 @@ def fetch_job_details(job_self_url: str, config):
 def update_application_status_after_call(organization_id: int, application_id: int):
     try:
         config = AIPhoneCallConfig.objects.get(organization_id=organization_id)
-
         status_id = getattr(config, "status_when_call_is_placed", None)
 
         if not status_id:
@@ -156,25 +224,10 @@ def has_enough_time_passed(updated_at_str: str, waiting_duration_minutes: int) -
         updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
         current_time = datetime.now(timezone.utc)
         time_diff = (current_time - updated_at).total_seconds() / 60
-
         return time_diff >= waiting_duration_minutes
     except Exception as e:
         print(f"Error parsing updatedAt timestamp '{updated_at_str}': {str(e)}")
         return False
-
-
-def get_welcome_message_audio_url(config):
-    """Get the full URL for the welcome message audio file"""
-    if config.welcome_message_audio:
-        # If using Django storage backend, get the full URL
-        try:
-            return config.welcome_message_audio.url
-        except:
-            # Fallback: construct URL manually if needed
-            from django.conf import settings
-
-            return f"{settings.MEDIA_URL}{config.welcome_message_audio.name}"
-    return None
 
 
 @shared_task
@@ -182,7 +235,7 @@ def fetch_platform_candidates(config):
     access_token = config.platform.access_token
     primary_questions = config.get_primary_questions()
     waiting_duration = config.calling_time_after_status_update
-    welcome_audio_url = get_welcome_message_audio_url(config)
+    organization_name = config.organization.name  # Get organization name
 
     if not access_token:
         print("Error: Could not get JobAdder access token")
@@ -232,6 +285,13 @@ def fetch_platform_candidates(config):
                     continue
                 job_details = fetch_job_details(job_self_url, config)
 
+                # Generate welcome audio for this job
+                welcome_audio_url, welcome_text = generate_welcome_audio(
+                    organization_name=organization_name,
+                    job_title=job_title,
+                    voice_id=config.voice_id,
+                )
+
                 try:
                     applications_response = requests.get(
                         applications_url,
@@ -264,7 +324,6 @@ def fetch_platform_candidates(config):
                         if candidate_phone and not candidate_phone.startswith("+"):
                             candidate_phone = f"+{candidate_phone}"
 
-                        # Check if job and application status match AND enough time has passed
                         if (
                             status.get("statusId")
                             == config.application_status_for_calling
@@ -284,6 +343,7 @@ def fetch_platform_candidates(config):
                                 "primary_questions": primary_questions,
                                 "should_end_if_primary_question_failed": config.end_call_if_primary_answer_negative,
                                 "welcome_message_audio_url": welcome_audio_url,
+                                "welcome_text": welcome_text,
                                 "voice_id": config.voice_id,
                             }
 
@@ -347,6 +407,7 @@ def bulk_interview_calls(organization_id: int = None):
                 candidate.get("primary_questions"),
                 candidate.get("should_end_if_primary_question_failed"),
                 candidate.get("welcome_message_audio_url"),
+                candidate.get("welcome_text"),
                 candidate.get("voice_id"),
             ],
             countdown=countdown,
