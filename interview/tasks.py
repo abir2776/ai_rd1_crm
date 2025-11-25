@@ -39,7 +39,7 @@ def generate_welcome_audio(
     }
 
     payload = {
-        "text": f"[BRITHISH ACCENT] {welcome_text}",
+        "text": welcome_text,
         "model_id": "eleven_v3",
         "voice_settings": {
             "stability": 0.5,
