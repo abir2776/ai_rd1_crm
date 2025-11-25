@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ cv_data.full_name }} - Professional CV</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        /* Removed @page A4 format */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f5f5;
+        }
+        
+        .cv-container {
+            background: white;
+            padding: 0 40px 40px 40px; /* No top padding */
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .cv-logo svg {
+            display: block;
+            margin: 0 auto;
+        }
+
+
+        h2 {
+            color: #2C3E50;
+            text-align: center;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            color: #2980B9;
+            font-size: 18px;
+            font-weight: 600;
+            border-bottom: 2px solid #2980B9;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+
+        p, ul {
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+
+        ul li {
+            padding-left: 20px;
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        ul > li::before {
+            content: "•";
+            color: #2980B9;
+            font-size: 18px;
+            position: absolute;
+            left: 0;
+            top: 2px;
+        }
+
+        ul ul {
+            margin-top: 5px;
+            padding-left: 30px;
+        }
+
+        ul ul li {
+            font-size: 14px;
+            color: #555;
+            padding-left: 15px;
+            position: relative;
+        }
+
+        ul ul li::before {
+            content: "◦";
+            color: #555;
+            font-size: 14px;
+            position: absolute;
+            left: 0;
+            top: 2px;
+        }
+
+        @media print {
+            .download-btn, .back-button {
+                display: none !important;
+            }
+            
+        body {
+                background: white;
+            }
+            
+        }
+    </style>
+</head>
+<body>
+    <div class="cv-container">
+        
+        
+        <h2>{{ cv_data.full_name }}</h2>
+
+        <div class="section">
+            <div class="section-title">Professional Summary</div>
+            <p>{{ cv_data.professional_summary }}</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Professional Experience</div>
+            <ul>
+                {% for exp in cv_data.professional_experience %}
+                    <li><strong>{{ exp.job_title }}</strong> at {{ exp.company_name }} ({{ exp.start_date }} - {{ exp.end_date }})
+                        {% if exp.job_description %}
+                            <ul>
+                                {% for item in exp.job_description %}
+                                    <li>{{ item }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Education</div>
+            <ul>
+                {% for edu in cv_data.education %}
+                    <li>{{ edu.degree }} in {{ edu.major }} from {{ edu.school_name }} ({{ edu.start_date }} - {{ edu.end_date }})</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Skills</div>
+            <ul>
+                {% for skill in cv_data.skills %}
+                    <li>{{ skill.skill_name }} - {{ skill.skill_description }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Certifications</div>
+            <ul>
+                {% for certificate in cv_data.certifications %}
+                    <li>{{ certificate.certification_name }} {% if certificate.certification_authority %} - {{ certificate.certification_authority }} {% endif %}{% if certificate.start_date or certificate.end_date %}({% if certificate.start_date %}{{ certificate.start_date }} - {% endif %}{% if certificate.end_date %}{{ certificate.end_date }}{% endif %}){% endif %}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Languages</div>
+            <ul>
+                {% for language in cv_data.languages %}
+                    <li>{{ language.language_name }} - {{ language.proficiency }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Areas of Expertise</div>
+            <ul>
+                {% for exp in cv_data.areas_of_expertise %}
+                    <li>{{ exp.expertise_name }}: {{ exp.expertise_description }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Areas for Improvement & Recommendations</div>
+            <ul>
+                {% for recom in cv_data.areas_for_improvement %}
+                    <li>{{ recom.area_name }}: {{ recom.area_description }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+    </div>
+</body>
+</html>

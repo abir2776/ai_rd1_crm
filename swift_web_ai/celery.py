@@ -20,9 +20,13 @@ def debug_task(self):
 #     Celery Beat SCHEDULE
 # -------------------------------
 app.conf.beat_schedule = {
-    "run-initiate-all-interview-every-5-min": {
-        "task": "interview.tasks.initiate_all_interview",
+    # "run-initiate-all-interview-every-5-min": {
+    #     "task": "interview.tasks.initiate_all_interview",
+    #     "schedule": crontab(minute="*/3"),
+    #     "args": (),
+    # },
+    "format-cvs-every-3-minutes": {
+        "task": "cv_formatter.tasks.initiate_all_cv_formatting",
         "schedule": crontab(minute="*/3"),
-        "args": (),
     },
 }
