@@ -553,6 +553,7 @@ def fetch_platform_cvs(config: "CVFormatterConfig") -> List[Dict]:
                         attachments_data = attachments_response.json()
 
                         for attachment in attachments_data.get("items", []):
+                            print(attachment)
                             # Only process resumes
                             if attachment.get("category") != "Resume":
                                 continue
