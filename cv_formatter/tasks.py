@@ -527,16 +527,45 @@ def fetch_platform_cvs(config: "CVFormatterConfig") -> List[Dict]:
 
                 for application in applications_data.get("items", []):
                     candidate = application.get("candidate", {})
-                    candidate_id = candidate.get("candidateId")
                     candidate_name = f"{candidate.get('firstName', '')} {candidate.get('lastName', '')}"
 
-                    # Fetch candidate attachments
-                    attachments_url = candidate.get("links", {}).get("attachments")
+                    # Get the candidate's self URL
+                    candidate_self_url = candidate.get("links", {}).get("self")
 
-                    if not attachments_url:
+                    if not candidate_self_url:
+                        print(f"No self URL found for candidate {candidate_name}")
                         continue
 
                     try:
+                        # Fetch full candidate details
+                        candidate_response = requests.get(
+                            candidate_self_url, headers=headers, timeout=30
+                        )
+
+                        if candidate_response.status_code == 401:
+                            access_token = config.platform.refresh_access_token()
+                            if access_token:
+                                headers["Authorization"] = f"Bearer {access_token}"
+                                candidate_response = requests.get(
+                                    candidate_self_url, headers=headers, timeout=30
+                                )
+
+                        candidate_response.raise_for_status()
+                        candidate_data = candidate_response.json()
+
+                        # Now get the attachments URL from the full candidate data
+                        candidate_id = candidate_data.get("candidateId")
+                        attachments_url = candidate_data.get("links", {}).get(
+                            "attachments"
+                        )
+
+                        if not attachments_url:
+                            print(
+                                f"No attachments URL found for candidate {candidate_name}"
+                            )
+                            continue
+
+                        # Fetch candidate attachments
                         attachments_response = requests.get(
                             attachments_url, headers=headers, timeout=30
                         )
@@ -553,7 +582,6 @@ def fetch_platform_cvs(config: "CVFormatterConfig") -> List[Dict]:
                         attachments_data = attachments_response.json()
 
                         for attachment in attachments_data.get("items", []):
-                            print(attachment)
                             # Only process resumes
                             if attachment.get("category") != "Resume":
                                 continue
@@ -582,7 +610,9 @@ def fetch_platform_cvs(config: "CVFormatterConfig") -> List[Dict]:
                             print(f"Added CV for processing: {candidate_name}")
 
                     except Exception as e:
-                        print(f"Error fetching attachments: {e}")
+                        print(
+                            f"Error fetching candidate details or attachments for {candidate_name}: {e}"
+                        )
                         continue
 
             except Exception as e:
