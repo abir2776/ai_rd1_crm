@@ -279,7 +279,7 @@ def fetch_platform_candidates(config):
                 job_title = job.get("title")
                 job_self_url = job.get("links", {}).get("self")
                 applications_url = job.get("links", {}).get("applications")
-                if ad_id != 650137:
+                if ad_id != 650902:
                     continue
                 if not applications_url:
                     print(f"No applications link found for job: {job_title}")
