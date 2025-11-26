@@ -326,7 +326,8 @@ def fetch_platform_candidates(config):
                             candidate_phone = f"+{candidate_phone}"
 
                         if (
-                            27789 == config.application_status_for_calling
+                            status.get("statusId")
+                            == config.application_status_for_calling
                             and has_enough_time_passed(updated_at, waiting_duration)
                         ):
                             candidate_data = {
