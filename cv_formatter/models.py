@@ -43,7 +43,7 @@ class CVFormatterConfig(models.Model):
     upload_without_logo = models.BooleanField(
         default=True, help_text="Upload formatted CV without company logo"
     )
-    logo = models.FileField(null=True, blank=True)
+    logo = models.FileField(null=True, blank=True, upload_to="organizations/logo")
     is_active = models.BooleanField(default=True)
 
     class Meta:
