@@ -533,7 +533,7 @@ def format_single_cv(
             )
             os.remove(temp_file_path)
             return
-        cv_data["logo"] = config.logo
+        cv_data["logo"] = f"https://api.swiftwave.ai{config.logo.url}"
 
     except Exception as e:
         print(f"Error processing CV with AI: {e}")
