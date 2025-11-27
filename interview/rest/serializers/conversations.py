@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from interview.models import InterviewConversation
+from interview.models import InterviewCallConversation
 
 
 class ConversationSaveSerializer(serializers.Serializer):
@@ -16,7 +16,7 @@ class ConversationSaveSerializer(serializers.Serializer):
     ended_at = serializers.DateTimeField()
 
 
-class InterviewConversationSerializer(serializers.ModelSerializer):
+class InterviewCallConversationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = InterviewConversation
+        model = InterviewCallConversation
         fields = "__all__"
