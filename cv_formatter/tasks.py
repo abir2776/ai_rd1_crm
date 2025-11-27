@@ -1,10 +1,14 @@
-import json
 import os
+import time
+import json
+import uuid
 from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 import requests
 from celery import shared_task
+from django.core.files.base import ContentFile
+from django.core.files.storage import default_storage
 from dotenv import load_dotenv
 from openai import OpenAI
 
@@ -212,8 +216,8 @@ def extract_text_from_pdf(file_path: str) -> Optional[str]:
         print(f"pypdf failed: {e}")
 
     try:
-        import pytesseract
         from pdf2image import convert_from_path
+        import pytesseract
 
         pages = convert_from_path(file_path, dpi=300)
         full_text = "\n".join(pytesseract.image_to_string(img) for img in pages)
@@ -316,8 +320,12 @@ def render_cv_to_html(cv_data: Dict, with_logo: bool = True) -> str:
     Render CV data to HTML using Jinja2 template.
     """
     from jinja2 import Environment, FileSystemLoader
+    from django.conf import settings
 
-    env = Environment(loader=FileSystemLoader("templates"))
+    # Use absolute path from Django settings
+    template_dir = os.path.join(settings.BASE_DIR, "templates")
+
+    env = Environment(loader=FileSystemLoader(template_dir))
 
     if with_logo:
         template = env.get_template("cv_templates/cv_template.html")
@@ -332,7 +340,7 @@ def convert_html_to_pdf(html_content: str, output_path: str) -> bool:
     Convert HTML to PDF using WeasyPrint.
     """
     try:
-        from weasyprint import CSS, HTML
+        from weasyprint import HTML, CSS
 
         custom_css = """
         @page {
@@ -406,6 +414,7 @@ def has_cv_been_processed(attachment_id: str, organization_id: int) -> bool:
     """
     Check if CV has already been processed.
     """
+    from cv_formatter.models import FormattedCV
 
     return FormattedCV.objects.filter(
         attachment_id=attachment_id, organization_id=organization_id
@@ -422,6 +431,7 @@ def mark_cv_as_processed(
     """
     Mark CV as processed in database.
     """
+    from cv_formatter.models import FormattedCV
 
     FormattedCV.objects.create(
         attachment_id=attachment_id,
