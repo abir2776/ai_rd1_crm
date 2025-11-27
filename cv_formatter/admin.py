@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import CVFormatterConfig, FormattedCV
+
+admin.site.register(CVFormatterConfig)
+admin.site.register(FormattedCV)

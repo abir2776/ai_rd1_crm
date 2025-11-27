@@ -323,7 +323,7 @@ def render_cv_to_html(cv_data: Dict, with_logo: bool = True) -> str:
     from django.conf import settings
 
     # Use absolute path from Django settings
-    template_dir = os.path.join(settings.BASE_DIR, "templates")
+    template_dir = os.path.join(settings.BASE_DIR, "cv_formatter/templates")
 
     env = Environment(loader=FileSystemLoader(template_dir))
 
