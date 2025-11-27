@@ -637,11 +637,11 @@ def upload_cv_to_platform(
 
         with open(file_path, "rb") as file:
             response = requests.post(
-                f"{config.platform.base_url}/candidates/{candidate_id}/attachments",
+                f"{config.platform.base_url}/candidates/{candidate_id}/attachments/FormattedResume",
                 headers={
                     "Authorization": f"Bearer {access_token}",
                 },
-                files={"file": file},
+                files={"fileData": file},
                 timeout=30,
             )
 
@@ -650,11 +650,11 @@ def upload_cv_to_platform(
             if access_token:
                 with open(file_path, "rb") as file:
                     response = requests.post(
-                        f"{config.platform.base_url}/candidates/{candidate_id}/attachments",
+                        f"{config.platform.base_url}/candidates/{candidate_id}/attachments/FormattedResume",
                         headers={
                             "Authorization": f"Bearer {access_token}",
                         },
-                        files={"file": file},
+                        files={"fileData": file},
                         timeout=30,
                     )
 
@@ -827,7 +827,9 @@ def format_single_cv(
     try:
         # With logo
         html_with_logo = render_cv_to_html(cv_data, with_logo=True)
-        pdf_path_with_logo = f"{PDF_FOLDER}/formatted_{file_name}_{attachment_id}.pdf"
+        pdf_path_with_logo = (
+            f"{PDF_FOLDER}/test_formatted_{file_name}_{attachment_id}.pdf"
+        )
 
         if not convert_html_to_pdf(html_with_logo, pdf_path_with_logo):
             raise Exception("Failed to generate PDF with logo")
@@ -835,7 +837,7 @@ def format_single_cv(
         # Without logo
         html_without_logo = render_cv_to_html(cv_data, with_logo=False)
         pdf_path_without_logo = (
-            f"{PDF_FOLDER}/formatted_without_logo_{file_name}_{attachment_id}.pdf"
+            f"{PDF_FOLDER}/test_formatted_without_logo_{file_name}_{attachment_id}.pdf"
         )
 
         if not convert_html_to_pdf(html_without_logo, pdf_path_without_logo):
