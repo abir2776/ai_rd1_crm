@@ -586,10 +586,10 @@ def format_single_cv(
 
         # Cleanup
         os.remove(temp_file_path)
-        if os.path.exists(pdf_path_with_logo):
-            os.remove(pdf_path_with_logo)
-        if os.path.exists(pdf_path_without_logo):
-            os.remove(pdf_path_without_logo)
+        # if os.path.exists(pdf_path_with_logo):
+        #     os.remove(pdf_path_with_logo)
+        # if os.path.exists(pdf_path_without_logo):
+        #     os.remove(pdf_path_without_logo)
 
     except Exception as e:
         print(f"Error uploading CVs: {e}")
