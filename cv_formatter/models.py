@@ -78,23 +78,14 @@ class CVFormatterConfig(models.Model):
 
 
 class FormattedCV(models.Model):
-    STATUS_CHOICES = [
-        ("success", "Success"),
-        ("download_failed", "Download Failed"),
-        ("extraction_failed", "Text Extraction Failed"),
-        ("parsing_failed", "Parsing Failed"),
-        ("ai_failed", "AI Processing Failed"),
-        ("pdf_generation_failed", "PDF Generation Failed"),
-        ("upload_failed", "Upload Failed"),
-    ]
-
     attachment_id = models.CharField(max_length=255, db_index=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="formatted_cvs"
     )
     candidate_id = models.IntegerField()
 
-    status = models.CharField(max_length=50, choices=STATUS_CHOICES, default="success")
+    pdf_file_with_logo = models.FileField(upload_to="formatted_cv")
+    pdf_file_without_logo = models.FileField(upload_to="formatted_cv")
 
     extracted_data = models.JSONField(
         default=dict, help_text="Extracted CV data from AI"
@@ -103,21 +94,10 @@ class FormattedCV(models.Model):
     processed_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        db_table = "formatted_cvs"
-        verbose_name = "Formatted CV"
-        verbose_name_plural = "Formatted CVs"
         unique_together = ["attachment_id", "organization"]
-        indexes = [
-            models.Index(fields=["attachment_id", "organization"]),
-            models.Index(fields=["candidate_id"]),
-            models.Index(fields=["status"]),
-        ]
 
     def __str__(self):
-        return f"CV {self.attachment_id} - {self.status}"
-
-    def is_successful(self):
-        return self.status == "success"
+        return f"CV {self.attachment_id} - {self.organization.id}"
 
 
 class CVSection(models.Model):

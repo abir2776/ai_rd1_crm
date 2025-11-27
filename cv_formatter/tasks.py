@@ -378,28 +378,28 @@ def upload_cv_to_platform(
     try:
         access_token = config.platform.access_token
 
-        response = requests.post(
-            f"{config.platform.base_url}/candidates/{candidate_id}/attachments",
-            headers={
-                "Authorization": f"Bearer {access_token}",
-                "Content-Type": "application/json",
-            },
-            files={"file": open(file_path, "rb")},
-            timeout=30,
-        )
+        with open(file_path, "rb") as file:
+            response = requests.post(
+                f"{config.platform.base_url}/candidates/{candidate_id}/attachments",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                },
+                files={"file": file},
+                timeout=30,
+            )
 
         if response.status_code == 401:
             access_token = config.platform.refresh_access_token()
             if access_token:
-                response = requests.post(
-                    f"{config.platform.base_url}/candidates/{candidate_id}/attachments",
-                    headers={
-                        "Authorization": f"Bearer {access_token}",
-                        "Content-Type": "application/json",
-                    },
-                    files={"file": open(file_path, "rb")},
-                    timeout=30,
-                )
+                with open(file_path, "rb") as file:
+                    response = requests.post(
+                        f"{config.platform.base_url}/candidates/{candidate_id}/attachments",
+                        headers={
+                            "Authorization": f"Bearer {access_token}",
+                        },
+                        files={"file": file},
+                        timeout=30,
+                    )
 
         response.raise_for_status()
         print(f"Successfully uploaded CV for candidate {candidate_id}")
@@ -414,8 +414,6 @@ def has_cv_been_processed(attachment_id: str, organization_id: int) -> bool:
     """
     Check if CV has already been processed.
     """
-    from cv_formatter.models import FormattedCV
-
     return FormattedCV.objects.filter(
         attachment_id=attachment_id, organization_id=organization_id
     ).exists()
@@ -425,22 +423,47 @@ def mark_cv_as_processed(
     attachment_id: str,
     organization_id: int,
     candidate_id: int,
-    status: str,
     cv_data: Optional[Dict] = None,
-):
+    pdf_with_logo_path: Optional[str] = None,
+    pdf_without_logo_path: Optional[str] = None,
+) -> Optional[FormattedCV]:
     """
-    Mark CV as processed in database.
+    Mark CV as processed in database and save PDF files.
     """
-    from cv_formatter.models import FormattedCV
+    try:
+        formatted_cv = FormattedCV(
+            attachment_id=attachment_id,
+            organization_id=organization_id,
+            candidate_id=candidate_id,
+            extracted_data=cv_data or {},
+            processed_at=datetime.now(timezone.utc),
+        )
 
-    FormattedCV.objects.create(
-        attachment_id=attachment_id,
-        organization_id=organization_id,
-        candidate_id=candidate_id,
-        status=status,
-        extracted_data=cv_data or {},
-        processed_at=datetime.now(timezone.utc),
-    )
+        # Save PDF files if provided
+        if pdf_with_logo_path and os.path.exists(pdf_with_logo_path):
+            with open(pdf_with_logo_path, "rb") as f:
+                file_name = f"formatted_cv_with_logo_{attachment_id}.pdf"
+                formatted_cv.pdf_file_with_logo.save(
+                    file_name, ContentFile(f.read()), save=False
+                )
+
+        if pdf_without_logo_path and os.path.exists(pdf_without_logo_path):
+            with open(pdf_without_logo_path, "rb") as f:
+                file_name = f"formatted_cv_without_logo_{attachment_id}.pdf"
+                formatted_cv.pdf_file_without_logo.save(
+                    file_name, ContentFile(f.read()), save=False
+                )
+
+        formatted_cv.save()
+        print(f"Successfully saved FormattedCV record for attachment {attachment_id}")
+        return formatted_cv
+
+    except Exception as e:
+        print(f"Error marking CV as processed: {e}")
+        import traceback
+
+        traceback.print_exc()
+        return None
 
 
 @shared_task(max_retries=3)
@@ -455,6 +478,10 @@ def format_single_cv(
     """
     Format a single CV for a candidate.
     """
+    pdf_path_with_logo = None
+    pdf_path_without_logo = None
+    temp_file_path = None
+
     try:
         config = CVFormatterConfig.objects.get(organization_id=organization_id)
     except CVFormatterConfig.DoesNotExist:
@@ -497,9 +524,6 @@ def format_single_cv(
 
     except Exception as e:
         print(f"Error downloading CV: {e}")
-        mark_cv_as_processed(
-            attachment_id, organization_id, candidate_id, "download_failed"
-        )
         return
 
     # Extract text from CV
@@ -508,18 +532,14 @@ def format_single_cv(
 
         if not extracted_text:
             print(f"No text extracted from CV for {candidate_name}")
-            mark_cv_as_processed(
-                attachment_id, organization_id, candidate_id, "extraction_failed"
-            )
-            os.remove(temp_file_path)
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
             return
 
     except Exception as e:
         print(f"Error extracting text: {e}")
-        mark_cv_as_processed(
-            attachment_id, organization_id, candidate_id, "extraction_failed"
-        )
-        os.remove(temp_file_path)
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
         return
 
     # Process CV with OpenAI using function calling
@@ -528,17 +548,18 @@ def format_single_cv(
 
         if not cv_data:
             print(f"Failed to extract CV data for {candidate_name}")
-            mark_cv_as_processed(
-                attachment_id, organization_id, candidate_id, "parsing_failed"
-            )
-            os.remove(temp_file_path)
+            if temp_file_path and os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
             return
-        cv_data["logo"] = f"https://api.swiftwave.ai{config.logo.url}"
+
+        # Add logo URL to cv_data
+        if config.logo:
+            cv_data["logo"] = f"https://api.swiftwave.ai{config.logo.url}"
 
     except Exception as e:
         print(f"Error processing CV with AI: {e}")
-        mark_cv_as_processed(attachment_id, organization_id, candidate_id, "ai_failed")
-        os.remove(temp_file_path)
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
         return
 
     # Generate formatted PDFs
@@ -563,44 +584,64 @@ def format_single_cv(
 
     except Exception as e:
         print(f"Error generating PDFs: {e}")
-        mark_cv_as_processed(
-            attachment_id, organization_id, candidate_id, "pdf_generation_failed"
-        )
-        os.remove(temp_file_path)
+        # Cleanup
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+        if pdf_path_with_logo and os.path.exists(pdf_path_with_logo):
+            os.remove(pdf_path_with_logo)
+        if pdf_path_without_logo and os.path.exists(pdf_path_without_logo):
+            os.remove(pdf_path_without_logo)
         return
 
-    # Upload to platform
+    # Upload to platform (optional based on config)
+    upload_success = True
     try:
-        # if config.upload_with_logo:
-        #     upload_cv_to_platform(candidate_id, pdf_path_with_logo, config)
-        #     time.sleep(5)
+        if config.upload_with_logo:
+            upload_success = (
+                upload_cv_to_platform(candidate_id, pdf_path_with_logo, config)
+                and upload_success
+            )
+            time.sleep(5)
 
-        # if config.upload_without_logo:
-        #     upload_cv_to_platform(candidate_id, pdf_path_without_logo, config)
-        print(f"Successfully uploaded formatted CVs for {candidate_name}")
+        if config.upload_without_logo:
+            upload_success = (
+                upload_cv_to_platform(candidate_id, pdf_path_without_logo, config)
+                and upload_success
+            )
 
-        # Mark as successfully processed
-        mark_cv_as_processed(
-            attachment_id, organization_id, candidate_id, "success", cv_data
-        )
-
-        # Cleanup
-        os.remove(temp_file_path)
-        # if os.path.exists(pdf_path_with_logo):
-        #     os.remove(pdf_path_with_logo)
-        # if os.path.exists(pdf_path_without_logo):
-        #     os.remove(pdf_path_without_logo)
+        if upload_success:
+            print(f"Successfully uploaded formatted CVs for {candidate_name}")
 
     except Exception as e:
         print(f"Error uploading CVs: {e}")
-        mark_cv_as_processed(
-            attachment_id, organization_id, candidate_id, "upload_failed", cv_data
+        upload_success = False
+
+    # Save to database with PDF files
+    try:
+        formatted_cv = mark_cv_as_processed(
+            attachment_id=attachment_id,
+            organization_id=organization_id,
+            candidate_id=candidate_id,
+            cv_data=cv_data,
+            pdf_with_logo_path=pdf_path_with_logo,
+            pdf_without_logo_path=pdf_path_without_logo,
         )
-        # Still cleanup files
-        os.remove(temp_file_path)
-        if os.path.exists(pdf_path_with_logo):
+
+        if formatted_cv:
+            print(f"Successfully saved formatted CV to database for {candidate_name}")
+        else:
+            print(f"Failed to save formatted CV to database for {candidate_name}")
+
+    except Exception as e:
+        print(f"Error saving to database: {e}")
+
+    # Cleanup temporary files
+    finally:
+        if temp_file_path and os.path.exists(temp_file_path):
+            os.remove(temp_file_path)
+        if pdf_path_with_logo and os.path.exists(pdf_path_with_logo):
             os.remove(pdf_path_with_logo)
-        if os.path.exists(pdf_path_without_logo):
+        if pdf_path_without_logo and os.path.exists(pdf_path_without_logo):
             os.remove(pdf_path_without_logo)
 
 
@@ -775,6 +816,9 @@ def fetch_platform_cvs(config: "CVFormatterConfig") -> List[Dict]:
 
 @shared_task
 def bulk_format_cvs(organization_id: int = None):
+    """
+    Bulk format CVs for a specific organization.
+    """
     try:
         config = CVFormatterConfig.objects.get(organization_id=organization_id)
     except CVFormatterConfig.DoesNotExist:
@@ -789,7 +833,7 @@ def bulk_format_cvs(organization_id: int = None):
 
     # Queue CV formatting tasks with delays
     for i, cv in enumerate(cvs):
-        countdown = i * 120
+        countdown = i * 120  # 2 minutes delay between each task
         format_single_cv.apply_async(
             args=[
                 cv["attachment_id"],
