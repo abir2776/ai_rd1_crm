@@ -21,7 +21,7 @@
         
         .cv-container {
             background: white;
-            padding: 0 40px 40px 40px; /* No top padding */
+            padding: 40px;
             width: 100%;
             max-width: 900px;
             margin: 0 auto;
@@ -29,11 +29,27 @@
             box-shadow: none;
         }
 
-        .cv-logo svg {
+        /* Logo Section Styles */
+        .cv-logo {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-top: 20px;
+        }
+
+        .cv-logo img {
+            max-width: 150px;
+            max-height: 100px;
+            height: auto;
             display: block;
             margin: 0 auto;
         }
 
+        .cv-logo svg {
+            display: block;
+            margin: 0 auto;
+            max-width: 150px;
+            max-height: 100px;
+        }
 
         h2 {
             color: #2C3E50;
@@ -107,16 +123,28 @@
                 display: none !important;
             }
             
-        body {
+            body {
                 background: white;
             }
             
+            .cv-logo {
+                padding-top: 0;
+            }
         }
     </style>
 </head>
 <body>
     <div class="cv-container">
-        
+        <!-- Logo Section -->
+        {% if cv_data.logo %}
+        <div class="cv-logo">
+            {% if cv_data.logo.startswith('<svg') %}
+                {{ cv_data.logo | safe }}
+            {% else %}
+                <img src="{{ cv_data.logo }}" alt="Logo">
+            {% endif %}
+        </div>
+        {% endif %}
         
         <h2>{{ cv_data.full_name }}</h2>
 

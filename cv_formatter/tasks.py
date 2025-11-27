@@ -237,36 +237,79 @@ def extract_cv_data_with_openai(
     try:
         client = OpenAI(api_key=OPENAI_API_KEY)
 
-        prompt = f"""You are a professional CV parser and analyzer. Carefully read and analyze the following CV/resume text.
+        prompt = f"""You are a professional CV parser and career advisor. Carefully read and analyze the following CV/resume text.
 
 CV TEXT:
 {cv_text}
 
-IMPORTANT INSTRUCTIONS:
-1. If this is not a professional CV/resume, return null values for all fields.
-2. Extract all information accurately from the CV.
-3. For the following fields, you must GENERATE intelligent summaries based on the CV content:
-   - professional_summary: Write a compelling 2-3 sentence summary of the candidate's professional profile
-   - skills: Extract and organize skills with meaningful descriptions
-   - areas_of_expertise: Identify key areas where the candidate excels
-   - areas_for_improvement: Suggest 2-3 constructive areas for professional development
+CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE:
 
-4. For all other fields, extract the information exactly as it appears in the CV.
-5. Use the get_cv_return function to return all the structured data.
-"""
+1. MANDATORY FIELDS - These MUST be generated even if not explicitly stated in the CV:
+   
+   a) professional_summary: 
+      - Write a compelling 3-4 sentence summary of the candidate's professional profile
+      - Highlight their key strengths, experience level, and career focus
+      - This field is MANDATORY and cannot be empty
+   
+   b) skills: 
+      - Extract ALL skills mentioned or implied in the CV
+      - Add meaningful descriptions for each skill
+      - Include technical skills, soft skills, and domain expertise
+      - This field is MANDATORY and must contain at least 3-5 skills
+   
+   c) areas_of_expertise: 
+      - Identify 3-5 key areas where the candidate demonstrates expertise
+      - Base this on their experience, achievements, and responsibilities
+      - Each expertise should have a detailed description
+      - This field is MANDATORY and cannot be empty
+   
+   d) areas_for_improvement (recommendations): 
+      - Suggest 3-5 constructive areas for professional development
+      - Focus on skills that would enhance their career progression
+      - Consider industry trends and common career advancement paths
+      - Examples: "Cloud computing certifications", "Leadership training", "Advanced data analytics"
+      - This field is MANDATORY and cannot be empty
+
+2. PROFESSIONAL EXPERIENCE - CRITICAL:
+   - For job_title: Extract the EXACT position title (e.g., "Senior Software Engineer", "Marketing Manager")
+   - If job title is unclear, infer it from the job description
+   - For position: Use the same as job_title or a variant
+   - NEVER leave job_title or position empty
+   - If multiple job titles exist in one role, use the most senior/recent one
+
+3. DATA EXTRACTION RULES:
+   - Extract all information accurately from the CV
+   - For dates: Use format "YYYY-MM" or "Month YYYY" (e.g., "2020-01" or "January 2020")
+   - For current positions: Use "Present" as end_date
+   - If information is missing, infer it intelligently from context
+   - ONLY return null for fields that truly have no information available
+
+4. QUALITY STANDARDS:
+   - professional_summary: Minimum 50 words
+   - skills: Minimum 3 items with descriptions
+   - areas_of_expertise: Minimum 3 items with descriptions  
+   - areas_for_improvement: Minimum 3 items with descriptions
+   - Each job_description: Minimum 2 bullet points
+
+5. If this document is clearly not a professional CV/resume, return null for all fields.
+
+Now extract all the CV data using the get_cv_return function. Remember: professional_summary, skills, areas_of_expertise, and areas_for_improvement MUST be generated with meaningful content."""
 
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a professional CV parser and career advisor. Extract CV information accurately and provide insightful analysis.",
+                    "content": """You are an expert CV parser and career advisor with 10+ years of experience. 
+You excel at extracting structured data from resumes and providing insightful career recommendations.
+You ALWAYS generate comprehensive professional summaries, skills lists, areas of expertise, and improvement recommendations.
+You NEVER leave mandatory fields empty.""",
                 },
                 {"role": "user", "content": prompt},
             ],
             tools=[GET_CV_RETURN_TOOL],
             tool_choice={"type": "function", "function": {"name": "get_cv_return"}},
-            temperature=0.3,
+            temperature=0.5,  # Increased for better generation of recommendations
         )
 
         # Extract function call result
@@ -279,8 +322,82 @@ IMPORTANT INSTRUCTIONS:
 
                 # Validate that we got actual data
                 if not result.get("full_name"):
-                    print("No valid CV data extracted")
+                    print("No valid CV data extracted - no name found")
                     return None
+
+                # Enhanced validation for mandatory generated fields
+                if not result.get("professional_summary"):
+                    print("WARNING: No professional summary generated")
+                    result["professional_summary"] = (
+                        "Professional with experience in the field."
+                    )
+
+                if not result.get("skills") or len(result.get("skills", [])) == 0:
+                    print("WARNING: No skills generated")
+                    result["skills"] = [
+                        {
+                            "skill_name": "Professional Skills",
+                            "skill_description": "Various professional competencies demonstrated through work experience",
+                        }
+                    ]
+
+                if (
+                    not result.get("areas_of_expertise")
+                    or len(result.get("areas_of_expertise", [])) == 0
+                ):
+                    print("WARNING: No areas of expertise generated")
+                    result["areas_of_expertise"] = [
+                        {
+                            "expertise_name": "Core Competency",
+                            "expertise_description": "Primary area of professional expertise",
+                        }
+                    ]
+
+                if (
+                    not result.get("areas_for_improvement")
+                    or len(result.get("areas_for_improvement", [])) == 0
+                ):
+                    print(
+                        "WARNING: No areas for improvement generated - adding defaults"
+                    )
+                    result["areas_for_improvement"] = [
+                        {
+                            "area_name": "Continuous Learning",
+                            "area_description": "Stay updated with latest industry trends and technologies",
+                        },
+                        {
+                            "area_name": "Professional Certifications",
+                            "area_description": "Consider obtaining relevant industry certifications to enhance credentials",
+                        },
+                        {
+                            "area_name": "Leadership Development",
+                            "area_description": "Develop leadership and management skills for career advancement",
+                        },
+                    ]
+
+                # Validate professional experience job titles
+                if result.get("professional_experience"):
+                    for idx, exp in enumerate(result["professional_experience"]):
+                        if not exp.get("job_title") or exp.get("job_title") == "null":
+                            print(f"WARNING: Missing job title in experience {idx}")
+                            # Try to infer from position or use generic
+                            exp["job_title"] = (
+                                exp.get("position") or "Professional Role"
+                            )
+
+                        if not exp.get("position") or exp.get("position") == "null":
+                            exp["position"] = (
+                                exp.get("job_title") or "Professional Role"
+                            )
+
+                        # Ensure job description has content
+                        if (
+                            not exp.get("job_description")
+                            or len(exp.get("job_description", [])) == 0
+                        ):
+                            exp["job_description"] = [
+                                "Performed various professional duties and responsibilities"
+                            ]
 
                 # Map the fields to match your template expectations
                 mapped_result = {
@@ -300,7 +417,27 @@ IMPORTANT INSTRUCTIONS:
                     "recommendations": result.get(
                         "areas_for_improvement", []
                     ),  # Mapped to recommendations
+                    "areas_for_improvement": result.get(
+                        "areas_for_improvement", []
+                    ),  # Also keep original
                 }
+
+                # Final validation log
+                print(f"Extracted CV data summary:")
+                print(f"  - Name: {mapped_result['full_name']}")
+                print(
+                    f"  - Professional Summary: {len(mapped_result.get('professional_summary', ''))} chars"
+                )
+                print(f"  - Skills: {len(mapped_result.get('skills', []))} items")
+                print(
+                    f"  - Areas of Expertise: {len(mapped_result.get('areas_of_expertise', []))} items"
+                )
+                print(
+                    f"  - Recommendations: {len(mapped_result.get('recommendations', []))} items"
+                )
+                print(
+                    f"  - Experience entries: {len(mapped_result.get('professional_experience', []))}"
+                )
 
                 return mapped_result
 
