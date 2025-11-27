@@ -7,7 +7,7 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Install system dependencies including WeasyPrint requirements
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     libpq-dev \
     gcc \
@@ -15,16 +15,16 @@ RUN apt-get update && apt-get install -y \
     # WeasyPrint dependencies
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
-    libgdk-pixbuf2.0-0 \
+    libgdk-pixbuf-2.0-0 \
     libffi-dev \
     libcairo2 \
-    libgobject-2.0-0 \
+    libglib2.0-0 \
     shared-mime-info \
-    # PDF text extraction dependencies (PyMuPDF, pdfplumber)
-    libmupdf-dev \
+    # PDF text extraction dependencies
+    poppler-utils \
     # OCR dependencies (if using pytesseract)
     tesseract-ocr \
-    poppler-utils \
+    && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -41,7 +41,7 @@ COPY --chown=appuser:appuser . .
 
 # Create media + static + celerybeat + PDF output directories with correct ownership
 RUN mkdir -p /app/media /app/static /app/celerybeat /app/formatted_pdfs /app/resume_candidates && \
-    chown -R appuser:appuser /app/media /app/static /app/celerybeat /app/formatted_pdfs /app/resume_candidates /app
+    chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
