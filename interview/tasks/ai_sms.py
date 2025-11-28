@@ -225,9 +225,9 @@ def initiate_sms_interview(
             organization_id=organization_id,
             application_id=application_id,
             candidate_id=candidate_id,
+            candidate_phone=to_number,
             jobad_id=job_ad_id,
             ai_instruction=ai_instructions,
-            conversation_text=f"AI: {initial_message}\n",
             conversation_json=[
                 {
                     "sender": "ai",
@@ -256,19 +256,14 @@ def initiate_sms_interview(
 
 
 @shared_task
-def process_candidate_sms_response(
-    candidate_id: int,
-    application_id: int,
-    candidate_message: str,
-    from_number: str,
-):
+def process_candidate_sms_response(candidate_phone: str, candidate_message: str):
     """Process incoming SMS from candidate and generate AI response"""
     try:
         # Get conversation
-        conversation = InterviewMessageConversation.objects.get(
-            candidate_id=candidate_id,
-            application_id=application_id,
-            type="AI_SMS",
+        conversation = (
+            InterviewMessageConversation.objects.filter(candidate_phone=candidate_phone)
+            .order_by("-created_at")
+            .first()
         )
 
         # Update status to IN_PROGRESS on first candidate response
@@ -303,8 +298,6 @@ def process_candidate_sms_response(
 
         # Update conversation
         conversation.conversation_json = conversation_history
-        conversation.conversation_text += f"Candidate: {candidate_message}\n"
-        conversation.conversation_text += f"AI: {ai_message}\n"
         conversation.message_count += 2
 
         # Check if interview is complete
@@ -315,7 +308,7 @@ def process_candidate_sms_response(
             # Update application status based on decision
             update_application_status_after_sms(
                 conversation.organization_id,
-                application_id,
+                conversation.application_id,
                 interview_status,
             )
 
@@ -326,19 +319,19 @@ def process_candidate_sms_response(
             organization_id=conversation.organization_id
         )
         send_sms_message(
-            from_number,
+            candidate_phone,
             str(config.phone.phone_number),
             ai_message,
             config.organization_id,
         )
 
         print(
-            f"Processed SMS response for candidate {candidate_id}, status: {interview_status or 'ongoing'}"
+            f"Processed SMS response for candidate {candidate_phone}, status: {interview_status or 'ongoing'}"
         )
 
     except InterviewMessageConversation.DoesNotExist:
         print(
-            f"No conversation found for candidate {candidate_id}, application {application_id}"
+            f"No conversation found for candidate {candidate_phone}, application {conversation.application_id}"
         )
     except Exception as e:
         print(f"Error processing candidate SMS: {str(e)}")
@@ -539,6 +532,9 @@ def fetch_sms_candidates(config):
 
                         if candidate_phone and not candidate_phone.startswith("+"):
                             candidate_phone = f"+{candidate_phone}"
+                        candidate_phone = candidate_phone.replace(" ", "").replace(
+                            "-", ""
+                        )
 
                         # Check if conversation already exists
                         existing_conversation = (

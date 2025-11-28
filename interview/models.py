@@ -144,13 +144,12 @@ class QuestionMessageConfigConnection(BaseModelWithUID):
 
 
 class InterviewMessageConversation(BaseModelWithUID):
+    candidate_phone = models.CharField(max_length=255)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     application_id = models.PositiveIntegerField()
     candidate_id = models.PositiveIntegerField()
     jobad_id = models.PositiveIntegerField()
     ai_instruction = models.TextField()
-
-    conversation_text = models.TextField(help_text="Full conversation in text format")
     conversation_json = models.JSONField(
         help_text="Conversation messages in JSON format"
     )
