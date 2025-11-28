@@ -2,9 +2,9 @@ from django.db import transaction
 from rest_framework import serializers
 
 from interview.models import (
-    AIPhoneCallConfig,
+    AIMessageConfig,
     PrimaryQuestion,
-    QuestionConfigConnection,
+    QuestionMessageConfigConnection,
 )
 from interview.rest.serializers.common import PrimaryQuestionSerializer
 from organizations.models import OrganizationPlatform, Platform
@@ -13,7 +13,7 @@ from phone_number.models import TwilioPhoneNumber
 from phone_number.rest.serializers.phone_numbers import PhoneNumberSerializer
 
 
-class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
+class AIPMessageConfigSerializer(serializers.ModelSerializer):
     platform_uid = serializers.CharField(write_only=True)
     phone_uid = serializers.CharField(write_only=True)
     phone = PhoneNumberSerializer(read_only=True)
@@ -24,30 +24,28 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
     platform = MyPlatformSerializer(read_only=True)
 
     class Meta:
-        model = AIPhoneCallConfig
+        model = AIMessageConfig
         fields = [
             "uid",
             "platform",
             "phone_uid",
             "phone",
-            "end_call_if_primary_answer_negative",
-            "application_status_for_calling",
-            "jobad_status_for_calling",
-            "calling_time_after_status_update",
-            "status_for_unsuccessful_call",
-            "status_for_successful_call",
-            "status_when_call_is_placed",
+            "application_status_for_sms",
+            "jobad_status_for_sms",
+            "sms_time_after_status_update",
+            "status_for_unsuccessful_sms",
+            "status_for_successful_sms",
+            "status_when_sms_is_placed",
             "platform_uid",
             "primary_question_inputs",
             "primary_questions",
-            "voice_id",
         ]
         read_only_fields = ["uid", "platform"]
 
     def get_primary_questions(self, obj):
-        question_ids = QuestionConfigConnection.objects.filter(config=obj).values_list(
-            "question_id", flat=True
-        )
+        question_ids = QuestionMessageConfigConnection.objects.filter(
+            config=obj
+        ).values_list("question_id", flat=True)
         questions = PrimaryQuestion.objects.filter(id__in=question_ids)
         return PrimaryQuestionSerializer(questions, many=True).data
 
@@ -74,20 +72,21 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
                 {"primary_question_inputs": "Some question UIDs are invalid."}
             )
 
-        config = AIPhoneCallConfig.objects.filter(organization=organization)
+        config = AIMessageConfig.objects.filter(organization=organization)
         if config.exists():
             raise serializers.ValidationError(
-                {"details": "Call configuration already exists."}
+                {"details": "Message configuration already exists."}
             )
 
-        config = AIPhoneCallConfig.objects.create(
+        config = AIMessageConfig.objects.create(
             organization=organization, platform=platform, phone=phone, **validated_data
         )
 
         connections = [
-            QuestionConfigConnection(question=q, config=config) for q in questions
+            QuestionMessageConfigConnection(question=q, config=config)
+            for q in questions
         ]
-        QuestionConfigConnection.objects.bulk_create(connections)
+        QuestionMessageConfigConnection.objects.bulk_create(connections)
 
         return config
 
@@ -119,11 +118,12 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {"primary_question_inputs": "Some question UIDs are invalid."}
                 )
-            QuestionConfigConnection.objects.filter(config=instance).delete()
+            QuestionMessageConfigConnection.objects.filter(config=instance).delete()
             new_connections = [
-                QuestionConfigConnection(question=q, config=instance) for q in questions
+                QuestionMessageConfigConnection(question=q, config=instance)
+                for q in questions
             ]
-            QuestionConfigConnection.objects.bulk_create(new_connections)
+            QuestionMessageConfigConnection.objects.bulk_create(new_connections)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)

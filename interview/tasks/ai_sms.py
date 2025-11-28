@@ -1,8 +1,7 @@
 import os
 import time
-import json
 from datetime import datetime, timezone
-from typing import List, Dict
+from typing import Dict, List
 
 import requests
 from celery import shared_task
@@ -11,11 +10,12 @@ from openai import OpenAI
 
 from interview.models import (
     AIMessageConfig,
-    QuestionMessageConfigConnection,
     InterviewMessageConversation,
     ProgressStatus,
+    QuestionMessageConfigConnection,
 )
 from organizations.models import Organization
+from phone_number.models import TwilioSubAccount
 from subscription.models import Subscription
 
 load_dotenv()
@@ -53,7 +53,7 @@ Job Details:
         if job_details.get("bulletPoints"):
             bullet_points = job_details["bulletPoints"]
             if isinstance(bullet_points, list):
-                instructions += f"- Key Points:\n"
+                instructions += "- Key Points:\n"
                 for point in bullet_points:
                     instructions += f"  * {point}\n"
         if job_details.get("location"):
@@ -115,14 +115,19 @@ IMPORTANT:
     return instructions
 
 
-def send_sms_message(to_number: str, from_number: str, message: str) -> bool:
+def send_sms_message(
+    to_number: str, from_number: str, message: str, organization_id: int
+) -> bool:
     """Send SMS message via Twilio or SMS service"""
     try:
         # Import Twilio client
         from twilio.rest import Client
 
-        account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+        twillio_sub_account = TwilioSubAccount.objects.get(
+            organization_id=organization_id
+        )
+        account_sid = twillio_sub_account.twilio_account_sid
+        auth_token = twillio_sub_account.twilio_auth_token
 
         twilio_client = Client(account_sid, auth_token)
 
@@ -236,7 +241,9 @@ def initiate_sms_interview(
         )
 
         # Send initial SMS
-        sms_sent = send_sms_message(to_number, from_phone_number, initial_message)
+        sms_sent = send_sms_message(
+            to_number, from_phone_number, initial_message, organization_id
+        )
 
         if sms_sent:
             print(f"SMS interview initiated for candidate {candidate_id}")
@@ -318,7 +325,12 @@ def process_candidate_sms_response(
         config = AIMessageConfig.objects.get(
             organization_id=conversation.organization_id
         )
-        send_sms_message(from_number, str(config.phone.phone_number), ai_message)
+        send_sms_message(
+            from_number,
+            str(config.phone.phone_number),
+            ai_message,
+            config.organization_id,
+        )
 
         print(
             f"Processed SMS response for candidate {candidate_id}, status: {interview_status or 'ongoing'}"
@@ -483,13 +495,13 @@ def fetch_sms_candidates(config):
 
         for job in jobs_data.get("items", []):
             time.sleep(0.5)
+            temp = False
 
             if job.get("state") == config.jobad_status_for_sms:
                 ad_id = job.get("adId")
                 job_title = job.get("title")
                 job_self_url = job.get("links", {}).get("self")
                 applications_url = job.get("links", {}).get("applications")
-
                 if not applications_url:
                     continue
 
@@ -545,7 +557,7 @@ def fetch_sms_candidates(config):
                             and has_enough_time_passed(updated_at, waiting_duration)
                         ):
                             candidate_data = {
-                                "to_number": candidate_phone,
+                                "to_number": os.getenv("TEST_PHONE_NUMBER"),
                                 "from_phone_number": str(config.phone.phone_number),
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
@@ -561,6 +573,10 @@ def fetch_sms_candidates(config):
                             print(
                                 f"Added SMS candidate: {candidate_first_name} for {job_title}"
                             )
+                            temp = True
+                            break
+                    if temp:
+                        break
 
                 except Exception as e:
                     print(f"Error fetching applications for {job_title}: {str(e)}")
@@ -590,7 +606,7 @@ def bulk_sms_interviews(organization_id: int = None):
         return
 
     for i, candidate in enumerate(candidates):
-        countdown = i * 30  # 30 seconds between each SMS
+        countdown = i * 30
 
         initiate_sms_interview.apply_async(
             kwargs=candidate,
