@@ -1,5 +1,7 @@
 from __future__ import absolute_import, unicode_literals
+
 import os
+
 from celery import Celery
 from celery.schedules import crontab
 
@@ -21,12 +23,19 @@ def debug_task(self):
 # -------------------------------
 app.conf.beat_schedule = {
     # "run-initiate-all-interview-every-5-min": {
-    #     "task": "interview.tasks.initiate_all_interview",
+    #     "task": "interview.tasks.ai_phone.initiate_all_interview",
     #     "schedule": crontab(minute="*/3"),
-    #     "args": (),
     # },
-    "format-cvs-every-3-minutes": {
-        "task": "cv_formatter.tasks.initiate_all_cv_formatting",
+    # "format-cvs-every-3-minutes": {
+    #     "task": "cv_formatter.tasks.initiate_all_cv_formatting",
+    #     "schedule": crontab(minute="*/3"),
+    # },
+    # "run-initiate-all-sms-interview-every-3-min": {
+    #     "task": "interview.tasks.ai_sms.initiate_all_sms_interviews",
+    #     "schedule": crontab(minute="*/3"),
+    # },
+    "initiate-whatsapp-interviews": {
+        "task": "interview.tasks.ai_whatsapp.initiate_all_whatsapp_interviews",
         "schedule": crontab(minute="*/3"),
     },
 }
