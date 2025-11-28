@@ -39,6 +39,7 @@ class AIPMessageConfigSerializer(serializers.ModelSerializer):
             "platform_uid",
             "primary_question_inputs",
             "primary_questions",
+            "type",
         ]
         read_only_fields = ["uid", "platform"]
 
