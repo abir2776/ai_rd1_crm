@@ -35,7 +35,7 @@ class AIPMessageConfigSerializer(serializers.ModelSerializer):
             "sms_time_after_status_update",
             "status_for_unsuccessful_sms",
             "status_for_successful_sms",
-            "status_when_sms_is_placed",
+            "status_when_sms_is_send",
             "platform_uid",
             "primary_question_inputs",
             "primary_questions",
