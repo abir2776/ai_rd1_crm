@@ -4,6 +4,7 @@ from django.views.decorators.http import require_POST
 from twilio.twiml.messaging_response import MessagingResponse
 
 from interview.tasks.ai_sms import process_candidate_sms_response
+from interview.tasks.ai_whatsapp import process_candidate_whatsapp_response
 
 
 @csrf_exempt
@@ -30,5 +31,34 @@ def twilio_sms_webhook(request):
 
     except Exception as e:
         print(f"Error in Twilio webhook: {str(e)}")
+        response = MessagingResponse()
+        return HttpResponse(str(response), content_type="text/xml")
+
+
+@csrf_exempt
+@require_POST
+def twilio_whatsapp_webhook(request):
+    try:
+        from_number = request.POST.get("From", "")
+        message_body = request.POST.get("Body", "")
+
+        if from_number.startswith("whatsapp:"):
+            from_number = from_number.replace("whatsapp:", "")
+        normalized_from = from_number.replace(" ", "").replace("-", "")
+        if normalized_from and not normalized_from.startswith("+"):
+            normalized_from = f"+{normalized_from}"
+
+        print(f"Received WhatsApp message from {from_number}: {message_body}")
+        process_candidate_whatsapp_response.delay(
+            candidate_phone=normalized_from,
+            candidate_message=message_body,
+        )
+
+        print(f"Queued WhatsApp processing for candidate {normalized_from}")
+        response = MessagingResponse()
+        return HttpResponse(str(response), content_type="text/xml")
+
+    except Exception as e:
+        print(f"Error in Twilio WhatsApp webhook: {str(e)}")
         response = MessagingResponse()
         return HttpResponse(str(response), content_type="text/xml")
