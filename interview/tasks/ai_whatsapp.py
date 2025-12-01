@@ -263,9 +263,7 @@ def initiate_whatsapp_interview(
     try:
         # Get the template SID from environment or database
         # You should store this in your AIMessageConfig model
-        template_sid = os.getenv(
-            "HXe793a2b3ed238f423ed26b520023493e"
-        )  # e.g., HXxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        template_sid = "HXe793a2b3ed238f423ed26b520023493e"
 
         if not template_sid:
             print("Error: TWILIO_WHATSAPP_TEMPLATE_SID not configured")
