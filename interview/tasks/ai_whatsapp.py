@@ -127,10 +127,49 @@ IMPORTANT:
     return instructions
 
 
+def send_whatsapp_template_message(
+    to_number: str,
+    from_number: str,
+    content_sid: str,
+    content_variables: dict,
+    organization_id: int,
+) -> bool:
+    """Send WhatsApp template message via Twilio"""
+    try:
+        from twilio.rest import Client
+
+        twillio_sub_account = TwilioSubAccount.objects.get(
+            organization_id=organization_id
+        )
+        account_sid = twillio_sub_account.twilio_account_sid
+        auth_token = twillio_sub_account.twilio_auth_token
+
+        twilio_client = Client(account_sid, auth_token)
+
+        # Format numbers for WhatsApp
+        whatsapp_from = f"whatsapp:{from_number}"
+        whatsapp_to = f"whatsapp:{to_number}"
+
+        # Send template message
+        message_obj = twilio_client.messages.create(
+            from_=whatsapp_from,
+            to=whatsapp_to,
+            content_sid=content_sid,
+            content_variables=content_variables,
+        )
+
+        print(f"WhatsApp template message sent successfully: {message_obj.sid}")
+        return True
+
+    except Exception as e:
+        print(f"Error sending WhatsApp template message: {str(e)}")
+        return False
+
+
 def send_whatsapp_message(
     to_number: str, from_number: str, message: str, organization_id: int
 ) -> bool:
-    """Send WhatsApp message via Twilio WhatsApp API"""
+    """Send WhatsApp message via Twilio WhatsApp API (for follow-up messages within 24hr window)"""
     try:
         from twilio.rest import Client
 
@@ -220,8 +259,18 @@ def initiate_whatsapp_interview(
     job_details: dict = None,
     primary_questions: list = None,
 ):
-    """Initiate a new WhatsApp interview conversation"""
+    """Initiate a new WhatsApp interview conversation using template message"""
     try:
+        # Get the template SID from environment or database
+        # You should store this in your AIMessageConfig model
+        template_sid = os.getenv(
+            "HXe793a2b3ed238f423ed26b520023493e"
+        )  # e.g., HXxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+        if not template_sid:
+            print("Error: TWILIO_WHATSAPP_TEMPLATE_SID not configured")
+            return
+
         # Generate AI instructions
         ai_instructions = generate_ai_whatsapp_instructions(
             job_title=job_title,
@@ -232,8 +281,15 @@ def initiate_whatsapp_interview(
             primary_questions=primary_questions or [],
         )
 
-        # Create initial greeting message - more friendly for WhatsApp
-        initial_message = f"Hi {candidate_name}! 👋\n\nThis is Recruitment Direct AI. Thanks for applying for the {job_title} position.\n\nI'd like to ask you a few quick questions about your application. Ready to start? Just reply YES when you're ready!"
+        # Create the template message content for storage
+        # This is what the candidate will see
+        template_message = f"Hi {candidate_name}! 👋\n\nThis is Recruitment Direct AI. Thanks for applying for the {job_title} position.\n\nI'd like to ask you a few quick questions about your application. Ready to start? Just reply YES when you're ready!"
+
+        # Prepare template variables for Twilio
+        content_variables = {
+            "1": candidate_name,  # {{1}} in template
+            "2": job_title,  # {{2}} in template
+        }
 
         # Create conversation record
         conversation = InterviewMessageConversation.objects.create(
@@ -246,8 +302,9 @@ def initiate_whatsapp_interview(
             conversation_json=[
                 {
                     "sender": "ai",
-                    "message": initial_message,
+                    "message": template_message,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "is_template": True,
                 }
             ],
             message_count=1,
@@ -255,9 +312,13 @@ def initiate_whatsapp_interview(
             status=ProgressStatus.INITIATED,
         )
 
-        # Send initial WhatsApp message
-        whatsapp_sent = send_whatsapp_message(
-            to_number, from_phone_number, initial_message, organization_id
+        # Send WhatsApp template message
+        whatsapp_sent = send_whatsapp_template_message(
+            to_number=to_number,
+            from_number=from_phone_number,
+            content_sid=template_sid,
+            content_variables=content_variables,
+            organization_id=organization_id,
         )
 
         if whatsapp_sent:
@@ -266,7 +327,7 @@ def initiate_whatsapp_interview(
                 organization_id, application_id, "sent"
             )
         else:
-            print(f"Failed to send initial WhatsApp message to {to_number}")
+            print(f"Failed to send initial WhatsApp template message to {to_number}")
 
     except Exception as e:
         print(f"Error initiating WhatsApp interview: {str(e)}")
@@ -337,7 +398,7 @@ def process_candidate_whatsapp_response(candidate_phone: str, candidate_message:
 
         conversation.save()
 
-        # Send AI response via WhatsApp
+        # Send AI response via WhatsApp (regular message within 24hr window)
         config = AIMessageConfig.objects.get(
             organization_id=conversation.organization_id, type="AI_WHATSAPP"
         )
