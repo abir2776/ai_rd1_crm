@@ -137,6 +137,7 @@ def send_whatsapp_template_message(
     """Send WhatsApp template message via Twilio"""
     try:
         from twilio.rest import Client
+        import json
 
         twillio_sub_account = TwilioSubAccount.objects.get(
             organization_id=organization_id
@@ -150,12 +151,18 @@ def send_whatsapp_template_message(
         whatsapp_from = f"whatsapp:{from_number}"
         whatsapp_to = f"whatsapp:{to_number}"
 
+        # CRITICAL: content_variables MUST be a JSON string, not a dict
+        content_vars_json = json.dumps(content_variables)
+
+        print(f"Sending template with ContentSid: {content_sid}")
+        print(f"ContentVariables: {content_vars_json}")
+
         # Send template message
         message_obj = twilio_client.messages.create(
             from_=whatsapp_from,
             to=whatsapp_to,
             content_sid=content_sid,
-            content_variables=content_variables,
+            content_variables=content_vars_json,  # Must be JSON string
         )
 
         print(f"WhatsApp template message sent successfully: {message_obj.sid}")
@@ -263,7 +270,9 @@ def initiate_whatsapp_interview(
     try:
         # Get the template SID from environment or database
         # You should store this in your AIMessageConfig model
-        template_sid = "HXe793a2b3ed238f423ed26b520023493e"
+        template_sid = os.getenv(
+            "TWILIO_WHATSAPP_TEMPLATE_SID"
+        )  # e.g., HXxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
         if not template_sid:
             print("Error: TWILIO_WHATSAPP_TEMPLATE_SID not configured")
