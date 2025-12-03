@@ -416,7 +416,7 @@ def bulk_interview_calls(organization_id: int = None):
 
 
 @shared_task
-def initiate_all_interview(name="interview.tasks.ai_phone.initiate_all_interview"):
+def initiate_all_interview():
     organization_ids = Organization.objects.filter().values_list("id", flat=True)
     subscribed_organization_ids = Subscription.objects.filter(
         organization_id__in=organization_ids, available_limit__gt=0
