@@ -30,12 +30,12 @@ app.conf.beat_schedule = {
     #     "task": "cv_formatter.tasks.initiate_all_cv_formatting",
     #     "schedule": crontab(minute="*/3"),
     # },
-    # "run-initiate-all-sms-interview-every-3-min": {
-    #     "task": "interview.tasks.ai_sms.initiate_all_sms_interviews",
-    #     "schedule": crontab(minute="*/3"),
-    # },
-    "initiate-whatsapp-interviews": {
-        "task": "interview.tasks.ai_whatsapp.initiate_all_whatsapp_interviews",
+    "run-initiate-all-sms-interview-every-3-min": {
+        "task": "interview.tasks.ai_sms.initiate_all_sms_interviews",
         "schedule": crontab(minute="*/3"),
     },
+    # "initiate-whatsapp-interviews": {
+    #     "task": "interview.tasks.ai_whatsapp.initiate_all_whatsapp_interviews",
+    #     "schedule": crontab(minute="*/3"),
+    # },
 }

@@ -114,19 +114,22 @@ class AIMessageConfig(BaseModelWithUID):
     platform = models.ForeignKey(OrganizationPlatform, on_delete=models.CASCADE)
     phone = models.ForeignKey(TwilioPhoneNumber, on_delete=models.CASCADE)
     application_status_for_sms = models.PositiveIntegerField()
-    jobad_status_for_sms = models.CharField(max_length=255)
+    jobad_status_for_sms = models.CharField(max_length=255, default="Current")
     sms_time_after_status_update = models.IntegerField()
     status_for_unsuccessful_sms = models.PositiveIntegerField()
     status_for_successful_sms = models.PositiveIntegerField()
     status_when_sms_is_send = models.PositiveIntegerField(default=0)
-    type = type = models.CharField(
+    twilio_sid = models.CharField(null=True, blank=True)
+    twilio_auth_token = models.CharField(null=True, blank=True)
+    whatsapp_template_sid = models.CharField(null=True, blank=True)
+    type = models.CharField(
         max_length=20,
         choices=InterviewType.choices,
         default=InterviewType.AI_SMS,
     )
 
     class Meta:
-        unique_together = ("organization", "platform")
+        unique_together = ("organization", "platform", "phone")
 
     def __str__(self):
         return f"{self.organization.name}-{self.platform.platform.name}"

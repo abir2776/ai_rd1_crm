@@ -136,14 +136,13 @@ def send_whatsapp_template_message(
 ) -> bool:
     """Send WhatsApp template message via Twilio"""
     try:
-        from twilio.rest import Client
         import json
 
-        twillio_sub_account = TwilioSubAccount.objects.get(
-            organization_id=organization_id
-        )
-        account_sid = twillio_sub_account.twilio_account_sid
-        auth_token = twillio_sub_account.twilio_auth_token
+        from twilio.rest import Client
+
+        conf = AIMessageConfig.objects.get(organization_id=organization_id)
+        account_sid = conf.twilio_sid
+        auth_token = conf.twilio_auth_token
 
         twilio_client = Client(account_sid, auth_token)
 
@@ -270,7 +269,8 @@ def initiate_whatsapp_interview(
     try:
         # Get the template SID from environment or database
         # You should store this in your AIMessageConfig model
-        template_sid = "HXe793a2b3ed238f423ed26b520023493e"
+        conf = AIMessageConfig.objects.get(organization_id=organization_id)
+        template_sid = conf.whatsapp_template_sid
         if not template_sid:
             print("Error: TWILIO_WHATSAPP_TEMPLATE_SID not configured")
             return
