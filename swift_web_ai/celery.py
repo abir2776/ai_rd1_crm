@@ -23,7 +23,7 @@ def debug_task(self):
 # -------------------------------
 app.conf.beat_schedule = {
     "run-initiate-all-interview-every-5-min": {
-        "task": "interview.task.initiate_all_interview",
+        "task": "interview.tasks.ai_phone.initiate_all_interview",
         "schedule": crontab(minute="*/3"),
     },
     # "format-cvs-every-3-minutes": {

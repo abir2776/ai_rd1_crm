@@ -273,11 +273,14 @@ def fetch_platform_candidates(config):
         print(f"Found {len(jobs_data.get('items', []))} live jobs")
         for job in jobs_data.get("items", []):
             time.sleep(0.5)
+            temp = False
             if job.get("state") == config.jobad_status_for_calling:
                 ad_id = job.get("adId")
                 job_title = job.get("title")
                 job_self_url = job.get("links", {}).get("self")
                 applications_url = job.get("links", {}).get("applications")
+                if ad_id != 650863:
+                    continue
                 if not applications_url:
                     print(f"No applications link found for job: {job_title}")
                     continue
@@ -328,7 +331,7 @@ def fetch_platform_candidates(config):
                             and has_enough_time_passed(updated_at, waiting_duration)
                         ):
                             candidate_data = {
-                                "to_number": candidate_phone,
+                                "to_number": os.getenv("TEST_PHONE_NUMBER"),
                                 "from_phone_number": str(config.phone.phone_number),
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
@@ -349,6 +352,8 @@ def fetch_platform_candidates(config):
                             print(
                                 f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
                             )
+                            temp = True
+                            break
                         elif (
                             job.get("state") == config.jobad_status_for_calling
                             and application.get("statusId")
@@ -358,6 +363,8 @@ def fetch_platform_candidates(config):
                                 f"Skipped candidate: {candidate_first_name} {candidate_last_name} - "
                                 f"waiting period not elapsed (updated: {updated_at})"
                             )
+                    if temp:
+                        break
 
                 except Exception as e:
                     print(f"Error fetching applications for job {job_title}: {str(e)}")
