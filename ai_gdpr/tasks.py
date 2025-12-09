@@ -180,7 +180,7 @@ def fetch_last_action_date(
         if config.should_use_last_application_date:
             try:
                 response = requests.get(
-                    f"{base_url}/v2/candidates/{candidate_id}/applications",
+                    f"{base_url}candidates/{candidate_id}/applications",
                     headers=headers,
                     timeout=30,
                 )
@@ -205,7 +205,7 @@ def fetch_last_action_date(
         if config.should_use_last_placement_date:
             try:
                 response = requests.get(
-                    f"{base_url}/v2/candidates/{candidate_id}/placements",
+                    f"{base_url}candidates/{candidate_id}/placements",
                     headers=headers,
                     timeout=30,
                 )
@@ -230,7 +230,7 @@ def fetch_last_action_date(
         if config.should_use_activity_creation_date:
             try:
                 response = requests.get(
-                    f"{base_url}/v2/candidates/{candidate_id}/activities",
+                    f"{base_url}candidates/{candidate_id}/activities",
                     headers=headers,
                     timeout=30,
                 )
@@ -255,7 +255,7 @@ def fetch_last_action_date(
         if config.should_use_last_note_creatation_date:
             try:
                 response = requests.get(
-                    f"{base_url}/v2/candidates/{candidate_id}/notes",
+                    f"{base_url}candidates/{candidate_id}/notes",
                     headers=headers,
                     timeout=30,
                 )
@@ -375,7 +375,7 @@ def fetch_candidates_from_platform(config) -> List[Dict]:
 
     try:
         response = requests.get(
-            f"{base_url}/v2/candidates",
+            f"{base_url}candidates",
             headers=headers,
             timeout=30,
         )
@@ -384,7 +384,7 @@ def fetch_candidates_from_platform(config) -> List[Dict]:
             if access_token:
                 headers["Authorization"] = f"Bearer {access_token}"
                 response = requests.get(
-                    f"{base_url}/v2/candidates",
+                    f"{base_url}/candidates",
                     headers=headers,
                     timeout=30,
                 )
