@@ -529,7 +529,7 @@ Best regards,
         send_email_task.delay(
             subject=subject,
             recipient=email,
-            template_name="gdpr_consent_email.html",
+            template_name="emails/gdpr_consent_email.html",
             context=email_context,
         )
 
