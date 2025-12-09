@@ -1,8 +1,6 @@
-import os
-import time
-import hashlib
 import base64
-from datetime import datetime, timezone, timedelta
+import os
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 import requests
@@ -10,9 +8,9 @@ from celery import shared_task
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from common.tasks import send_email_task
-from ai_gdpr.models import GDPREmailTracker
 from ai_gdpr.choices import ProgressStatus
+from ai_gdpr.models import GDPREmailTracker
+from common.tasks import send_email_task
 from organizations.models import Organization
 from subscription.models import Subscription
 
@@ -459,6 +457,17 @@ def initiate_gdpr_consent_email(
     organization_name: str,
 ):
     try:
+        from ai_gdpr.models import GDPREmailConfig
+
+        config = GDPREmailConfig.objects.get(organization_id=organization_id)
+        organization = Organization.objects.get(id=organization_id)
+        organization_name = organization.name
+
+    except (GDPREmailConfig.DoesNotExist, Organization.DoesNotExist):
+        print(f"Config or organization not found for organization {organization_id}")
+        return
+
+    try:
         ai_instructions = generate_gdpr_email_instructions(
             candidate_name=candidate_name,
             candidate_id=candidate_id,
@@ -499,8 +508,8 @@ Best regards,
             email=email,
             organization_id=organization_id,
             defaults={
-                "platform_id": platform_id,
                 "candidate_id": candidate_id,
+                "config_id": config,
                 "ai_instruction": ai_instructions,
                 "conversation_json": [
                     {
