@@ -50,6 +50,7 @@ CREATED_APPS = [
     "interview",
     "phone_number",
     "cv_formatter",
+    "ai_gdpr",
 ]
 THIRD_PARTY_APPS = [
     "versatileimagefield",

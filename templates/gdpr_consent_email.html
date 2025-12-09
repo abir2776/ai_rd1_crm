@@ -1,0 +1,232 @@
+<!-- gdpr_consent_email.html -->
+<!-- Save this in your templates directory -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GDPR Data Consent</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .content p {
+            margin: 15px 0;
+        }
+        .highlight-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .highlight-box strong {
+            color: #007bff;
+        }
+        .action-box {
+            background-color: #e7f3ff;
+            border: 2px solid #007bff;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 25px 0;
+            text-align: center;
+        }
+        .action-box h3 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 30px;
+            margin: 10px;
+            background-color: #007bff;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .button.yes {
+            background-color: #28a745;
+        }
+        .button.no {
+            background-color: #dc3545;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+        .important {
+            background-color: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        ul li {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 Your Data Privacy Rights</h1>
+        </div>
+
+        <div class="content">
+            <p>Dear <strong>{{ candidate_name }}</strong>,</p>
+
+            <p>We hope this message finds you well. As part of our commitment to data privacy and GDPR compliance, we're reaching out regarding your personal information stored in our recruitment system.</p>
+
+            <div class="highlight-box">
+                <strong>Your Rights:</strong>
+                <p>Under GDPR, you have control over your personal data. We currently hold your contact details, CV, and application history.</p>
+            </div>
+
+            <p><strong>We need your consent to continue storing your data.</strong></p>
+
+            <ul>
+                <li><strong>If you reply YES:</strong> We'll keep your data and may contact you about suitable job opportunities in the future.</li>
+                <li><strong>If you reply NO:</strong> We'll permanently delete your information within 30 days.</li>
+            </ul>
+
+            <div class="action-box">
+                <h3>📧 How to Respond</h3>
+                <p><strong>Simply reply to this email with:</strong></p>
+                <p style="font-size: 18px; margin: 20px 0;">
+                    <span style="background-color: #28a745; color: white; padding: 10px 20px; border-radius: 5px; margin: 0 10px;">YES</span>
+                    to keep your data
+                </p>
+                <p style="font-size: 18px; margin: 20px 0;">
+                    <span style="background-color: #dc3545; color: white; padding: 10px 20px; border-radius: 5px; margin: 0 10px;">NO</span>
+                    to delete your data
+                </p>
+            </div>
+
+            <div class="important">
+                <strong>⚠️ Important:</strong> If we don't hear from you within 30 days, we'll be required to delete your data as per GDPR regulations.
+            </div>
+
+            <p>If you have any questions about your data or this process, please don't hesitate to reach out.</p>
+
+            <p>Best regards,<br>
+            <strong>{{ organization_name }} Recruitment Team</strong></p>
+        </div>
+
+        <div class="footer">
+            <p>This email was sent as part of our GDPR compliance obligations.</p>
+            <p>{{ organization_name }} | Data Protection & Privacy</p>
+        </div>
+    </div>
+</body>
+</html>
+
+
+<!-- gdpr_response_email.html -->
+<!-- Save this in your templates directory -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GDPR Response</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #007bff;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 24px;
+        }
+        .content {
+            margin-bottom: 30px;
+        }
+        .message-box {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔒 GDPR Data Privacy</h1>
+        </div>
+
+        <div class="content">
+            <div class="message-box">
+                {{ message|linebreaks }}
+            </div>
+
+            <p>Best regards,<br>
+            <strong>{{ organization_name }} Team</strong></p>
+        </div>
+
+        <div class="footer">
+            <p>{{ organization_name }} | Data Protection & Privacy</p>
+        </div>
+    </div>
+</body>
+</html>

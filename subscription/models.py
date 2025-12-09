@@ -5,6 +5,8 @@ from common.choices import Status
 from common.models import BaseModelWithUID
 from organizations.models import Organization
 
+from .choices import FeatureType
+
 User = get_user_model()
 
 
@@ -12,6 +14,7 @@ class Feature(BaseModelWithUID):
     name = models.CharField(max_length=100, unique=True)
     code = models.SlugField(max_length=50, unique=True)
     description = models.TextField(blank=True)
+    type = models.CharField(max_length=20, choices=FeatureType.choices)
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
