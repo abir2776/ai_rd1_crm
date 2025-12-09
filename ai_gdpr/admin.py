@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from ai_gdpr.models import GDPREmailConfig, GDPREmailTracker
+
+admin.site.register(GDPREmailTracker)
+admin.site.register(GDPREmailConfig)
