@@ -8,18 +8,24 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install ALL system dependencies in one layer
+# Update and install minimal build tools first
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    postgresql-client \
-    libpq-dev \
     gcc \
-    libmagic1 \
+    libffi-dev \
+    libpq-dev \
+    postgresql-client \
+    libmagic1 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install remaining system libraries in a separate layer
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    libcairo2 \
     libpango-1.0-0 \
     libpangocairo-1.0-0 \
     libgdk-pixbuf-2.0-0 \
-    libffi-dev \
-    libcairo2 \
     libglib2.0-0 \
     shared-mime-info \
     poppler-utils \
