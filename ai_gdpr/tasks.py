@@ -509,7 +509,7 @@ Best regards,
             organization_id=organization_id,
             defaults={
                 "candidate_id": candidate_id,
-                "config_id": config,
+                "config_id": config.id,
                 "ai_instruction": ai_instructions,
                 "conversation_json": [
                     {
