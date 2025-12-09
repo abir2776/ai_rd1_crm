@@ -8,21 +8,24 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install system dependencies in smaller chunks
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends postgresql-client libpq-dev gcc && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
+# Install ALL system dependencies in one layer
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-    libmagic1 libpango-1.0-0 libpangocairo-1.0-0 \
-    libgdk-pixbuf-2.0-0 libffi-dev libcairo2 libglib2.0-0 && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
-
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    shared-mime-info poppler-utils tesseract-ocr && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    postgresql-client \
+    libpq-dev \
+    gcc \
+    libmagic1 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libgdk-pixbuf-2.0-0 \
+    libffi-dev \
+    libcairo2 \
+    libglib2.0-0 \
+    shared-mime-info \
+    poppler-utils \
+    tesseract-ocr && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser
