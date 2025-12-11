@@ -1,5 +1,5 @@
-# Base image
-FROM python:3.13-slim AS base
+# Base image - Use Python 3.12 for better stability
+FROM python:3.12-slim AS base
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
@@ -11,19 +11,27 @@ ENV PYTHONUNBUFFERED=1 \
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies in stages for better error detection
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         apt-utils \
         ca-certificates \
         gnupg \
         dirmngr \
-        wget \
+        wget && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         build-essential \
         gcc \
         libffi-dev \
         libpq-dev \
-        postgresql-client \
+        postgresql-client && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         libmagic1 \
         libpango-1.0-0 \
         libpangocairo-1.0-0 \
