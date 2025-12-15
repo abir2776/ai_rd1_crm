@@ -205,7 +205,7 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
                     {
                         "company_id": company_id,
                         "company_name": company_name,
-                        "company_email": "osmangoni255@gmail.com",
+                        "company_email": "contactwnoor@gmail.com",
                         "placement_id": placement_id,
                         "job_title": job_title,
                         "placement_created_at": placement_created_at.isoformat(),
