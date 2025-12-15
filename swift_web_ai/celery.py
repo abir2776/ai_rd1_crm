@@ -22,10 +22,14 @@ def debug_task(self):
 #     Celery Beat SCHEDULE
 # -------------------------------
 app.conf.beat_schedule = {
-    "run-initiate-all-gdpr-email": {
-        "task": "ai_gdpr.tasks.initiate_all_gdpr_emails",
+    "run-initiate-all-awr-email": {
+        "task": "awr_compliance.tasks.initiate_all_awr_emails",
         "schedule": crontab(minute="*/3"),
     },
+    # "run-initiate-all-gdpr-email": {
+    #     "task": "ai_gdpr.tasks.initiate_all_gdpr_emails",
+    #     "schedule": crontab(minute="*/3"),
+    # },
     # "run-initiate-all-interview-every-5-min": {
     #     "task": "interview.tasks.ai_phone.initiate_all_interview",
     #     "schedule": crontab(minute="*/3"),
