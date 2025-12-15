@@ -9,7 +9,7 @@ def send_email_task(
     recipient,
     template_name,
     context,
-    customer_email="osmangoni00255@gmail.com",
+    customer_email="gdpr@aryansoftbd.com",
 ):
     html_content = render_to_string(template_name, context)
     if customer_email:
