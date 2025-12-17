@@ -531,6 +531,7 @@ Best regards,
             recipient=email,
             template_name="emails/gdpr_consent_email.html",
             context=email_context,
+            customer_email=organization.email,
         )
 
         print(f"GDPR consent email sent to {email} (Candidate ID: {candidate_id})")

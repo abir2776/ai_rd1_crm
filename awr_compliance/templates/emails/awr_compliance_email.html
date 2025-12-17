@@ -122,20 +122,6 @@
             margin: 0;
             color: #856404;
         }
-        .cta-button {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #ffffff;
-            text-decoration: none;
-            padding: 14px 30px;
-            border-radius: 5px;
-            font-weight: 600;
-            margin: 20px 0;
-            text-align: center;
-        }
-        .cta-button:hover {
-            opacity: 0.9;
-        }
         .footer {
             background-color: #f8f9fa;
             padding: 25px 30px;
@@ -190,13 +176,13 @@
         <!-- Body -->
         <div class="email-body">
             <div class="greeting">
-                Dear {{ company_name }},
+                Dear {{ contact_first_name }} {{ contact_last_name }},
             </div>
 
             <div class="content-section">
                 <p>
-                    We hope this message finds you well. We are writing to inform you about an important compliance matter 
-                    regarding one of your active placements with {{ organization_name }}.
+                    As {{ candidate_first_name }} {{ candidate_last_name }} is nearing {{ weeks_threshold }} weeks on placement, 
+                    please provide pay parity information to ensure AWR compliance:
                 </p>
             </div>
 
@@ -205,23 +191,22 @@
                 <h3 style="margin-top: 0; color: #667eea; font-size: 15px;">📋 Placement Information</h3>
                 <p><strong>Placement ID:</strong> #{{ placement_id }}</p>
                 <p><strong>Job Title:</strong> {{ job_title }}</p>
-                <p><strong>Date:</strong> {{ current_date|default:"Recently" }}</p>
+                <p><strong>Candidate:</strong> {{ candidate_full_name }}</p>
             </div>
 
-            <!-- AWR Information -->
+            <!-- Required Information -->
             <div class="highlight-box">
-                <h3>📚 About Agency Workers Regulations (AWR)</h3>
-                <p>
-                    Under the Agency Workers Regulations 2010, agency workers are entitled to the same basic 
-                    employment and working conditions as permanent employees after completing 12 weeks in the 
-                    same role with the same hirer.
-                </p>
+                <h3>📋 Information Required</h3>
+                <p>Please provide the following information:</p>
                 <ul class="info-list">
-                    <li>Equal pay and conditions after 12 weeks</li>
-                    <li>Access to collective facilities and amenities from day one</li>
-                    <li>Protection against less favorable treatment</li>
-                    <li>Rights to information about permanent vacancies</li>
+                    <li>Job title</li>
+                    <li>Pay rate</li>
+                    <li>Holiday entitlement</li>
+                    <li>Bonuses or other benefits</li>
                 </ul>
+                <p style="margin-top: 15px;">
+                    <strong>If there is no equivalent comparator role, please confirm this by reply.</strong>
+                </p>
             </div>
 
             <!-- Action Required -->
@@ -234,14 +219,12 @@
             </div>
 
             <div class="content-section">
-                <h2>📋 Next Steps</h2>
-                <p>To maintain compliance, please:</p>
-                <ul class="info-list">
-                    <li>Review the current terms and conditions for this placement</li>
-                    <li>Confirm equal pay and benefits are being provided if applicable</li>
-                    <li>Update us with any changes to the placement status</li>
-                    <li>Contact us if you have any questions or concerns</li>
-                </ul>
+                <h2>📚 About Agency Workers Regulations (AWR)</h2>
+                <p>
+                    Under the Agency Workers Regulations 2010, agency workers are entitled to the same basic 
+                    employment and working conditions as permanent employees after completing 12 weeks in the 
+                    same role with the same hirer.
+                </p>
             </div>
 
             <div class="divider"></div>
@@ -250,13 +233,18 @@
                 <h2>📞 Need Assistance?</h2>
                 <p>
                     If you have any questions about AWR compliance or need clarification regarding this placement, 
-                    our team is here to help. Please don't hesitate to reach out to us.
+                    our team is here to help. Please don't hesitate to reach out to us by replying to this email.
                 </p>
             </div>
 
             <div class="important-notice">
                 <strong>Please note:</strong> This is an automated compliance notification. If you believe you have 
                 received this email in error, or if the placement has already ended, please contact us to update our records.
+            </div>
+
+            <div style="margin-top: 30px;">
+                <p style="margin: 0; color: #555;">Kind regards,</p>
+                <p style="margin: 5px 0 0 0; color: #667eea; font-weight: 600;">{{ organization_name }}</p>
             </div>
         </div>
 
@@ -268,7 +256,7 @@
                 This email is sent as part of our AWR compliance monitoring process.
             </p>
             <p style="font-size: 11px; color: #999; margin-top: 10px;">
-                © {{ current_year|default:"2024" }} {{ organization_name }}. All rights reserved.
+                © {% now "Y" %} {{ organization_name }}. All rights reserved.
             </p>
         </div>
     </div>

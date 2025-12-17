@@ -14,19 +14,14 @@ def gdpr_email_webhook_sendgrid(request):
     SendGrid sends data as form-encoded, not JSON
     """
     try:
-        # SendGrid sends form-encoded data
         candidate_email = request.POST.get("from")
         subject = request.POST.get("subject", "")
         message_body = request.POST.get("text") or request.POST.get("html", "")
-
-        # Validate required fields
         if not candidate_email:
             return JsonResponse({"error": "Missing sender email address"}, status=400)
 
         if not message_body:
             return JsonResponse({"error": "Missing email message body"}, status=400)
-
-        # Extract organization ID from subject line
         from ai_gdpr.tasks import extract_org_id_from_subject
 
         organization_id = extract_org_id_from_subject(subject)
@@ -39,8 +34,6 @@ def gdpr_email_webhook_sendgrid(request):
                 },
                 status=400,
             )
-
-        # Queue the response processing task
         process_candidate_email_response.delay(
             email=candidate_email,
             candidate_message=message_body.strip(),

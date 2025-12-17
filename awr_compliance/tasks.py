@@ -33,89 +33,35 @@ def decode_organization_id(encoded_str: str) -> Optional[int]:
         return None
 
 
-def get_interval_timedelta(interval_choice: str) -> timedelta:
-    """Convert interval choice to timedelta"""
-    interval_map = {
-        "6_MONTH": timedelta(days=180),
-        "12_MONTH": timedelta(days=365),
-        "24_MONTH": timedelta(days=730),
-        "36_MONTH": timedelta(days=1095),
-    }
-    return interval_map.get(interval_choice, timedelta(days=365))
-
-
-def fetch_main_contact_email(
-    company_main_contact_url: str, headers: dict
-) -> Optional[str]:
-    """Fetch main contact email from company"""
-    try:
-        response = requests.get(
-            company_main_contact_url,
-            headers=headers,
-            timeout=30,
-        )
-
-        if response.status_code == 200:
-            contact_data = response.json()
-            email = contact_data.get("email")
-            unsubscribed = contact_data.get("unsubscribed", False)
-
-            # Only return email if contact is not unsubscribed
-            if email and not unsubscribed:
-                return email
-
-        return None
-
-    except Exception as e:
-        print(f"Error fetching main contact from {company_main_contact_url}: {str(e)}")
-        return None
-
-
 def should_send_awr_email(
     config: AWRConfig,
-    company_email: str,
-    placement_created_at: datetime,
+    placement_id: int,
 ) -> bool:
-    """Determine if AWR email should be sent based on interval and tracker status"""
+    """Check if we've already sent an email for this placement"""
 
-    if not placement_created_at:
-        return False
-
-    # Get interval timedelta
-    interval_delta = get_interval_timedelta(config.interval)
-    current_time = datetime.now(timezone.utc)
-
-    # Check if interval has passed since placement creation
-    time_since_placement = current_time - placement_created_at
-    if time_since_placement < interval_delta:
-        return False
-
-    # Check if there's an existing tracker for this email
-    existing_tracker = (
-        AWRTracker.objects.filter(
-            email=company_email,
-            config__organization_id=config.organization_id,
-        )
-        .order_by("-updated_at")
-        .first()
-    )
+    # Check if there's an existing tracker for this placement
+    existing_tracker = AWRTracker.objects.filter(
+        config=config,
+        placement_id=placement_id,
+    ).first()
 
     if not existing_tracker:
-        # No tracker exists, send email
+        # No tracker exists, should send email
         return True
 
-    # Check if interval has passed since last tracker update
-    time_since_last_email = current_time - existing_tracker.updated_at
+    # Check if enough time has passed since last email (e.g., 7 days cooldown)
+    current_time = datetime.now(timezone.utc)
+    time_since_last_email = current_time - existing_tracker.last_sent_at
 
-    if time_since_last_email >= interval_delta:
-        # Interval has passed, send new email
-        return True
+    # Don't resend within 7 days
+    if time_since_last_email < timedelta(days=7):
+        return False
 
-    return False
+    return True
 
 
 def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
-    """Fetch placements and determine which companies need AWR emails"""
+    """Fetch placements based on AWR configuration criteria"""
     access_token = config.platform.access_token
     base_url = config.platform.base_url
 
@@ -124,12 +70,34 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
         "Content-Type": "application/json",
     }
 
-    companies_to_email = []
+    eligible_placements = []
 
     try:
+        # Calculate date threshold for StartDate filter
+        placement_started_before = config.placement_started_before_days
+        expiry_threshold = (
+            (datetime.now(timezone.utc) - timedelta(days=placement_started_before))
+            .date()
+            .isoformat()
+        )
+        another_expiry_threshold = (
+            (datetime.fromisoformat(expiry_threshold) - timedelta(days=1))
+            .date()
+            .isoformat()
+        )
+
+        # Build query parameters according to specification
+        params = {
+            "StartDate": [f"<{expiry_threshold}", f">{another_expiry_threshold}"],
+            "Approved": True,
+            "StatusId": config.selected_status_ids,
+            "Limit": 1000,
+        }
+
         response = requests.get(
-            f"{base_url}placements",
+            f"{base_url}v2/placements",
             headers=headers,
+            params=params,
             timeout=30,
         )
 
@@ -139,83 +107,96 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
             if access_token:
                 headers["Authorization"] = f"Bearer {access_token}"
                 response = requests.get(
-                    f"{base_url}placements",
+                    f"{base_url}v2/placements",
                     headers=headers,
+                    params=params,
                     timeout=30,
                 )
 
         response.raise_for_status()
         data = response.json()
 
-        processed_emails = set()  # Track processed emails to avoid duplicates
-
+        # Process each placement and fetch detailed information
         for placement in data.get("items", []):
             placement_id = placement.get("placementId")
-            job_title = placement.get("jobTitle", "")
-            created_at_str = placement.get("createdAt")
 
-            # Parse placement creation date
-            placement_created_at = None
-            if created_at_str:
-                try:
-                    placement_created_at = datetime.fromisoformat(
-                        created_at_str.replace("Z", "+00:00")
-                    )
-                except Exception as e:
-                    print(
-                        f"Error parsing createdAt for placement {placement_id}: {str(e)}"
-                    )
-                    continue
-
-            # Extract company information
-            job = placement.get("job", {})
-            company = job.get("company", {})
-            company_id = company.get("companyId")
-            company_name = company.get("name", "")
-
-            if not company_id or not company_name:
+            if not placement_id:
                 continue
 
-            # Get main contact link
-            company_links = company.get("links", {})
-            main_contact_url = company_links.get("mainContact")
+            # Fetch detailed placement information
+            try:
+                detail_response = requests.get(
+                    f"{base_url}v2/placements/{placement_id}",
+                    headers=headers,
+                    timeout=30,
+                )
 
-            if not main_contact_url:
+                if detail_response.status_code == 401:
+                    access_token = config.platform.refresh_access_token()
+                    if access_token:
+                        headers["Authorization"] = f"Bearer {access_token}"
+                        detail_response = requests.get(
+                            f"{base_url}v2/placements/{placement_id}",
+                            headers=headers,
+                            timeout=30,
+                        )
+
+                detail_response.raise_for_status()
+                placement_detail = detail_response.json()
+
+            except Exception as e:
+                print(f"Error fetching placement {placement_id} details: {str(e)}")
+                continue
+
+            # Extract payment type from detailed data
+            payment_type = placement_detail.get("paymentType")
+
+            # Check if payment type matches selected payment types
+            if payment_type not in config.selected_payment_types:
                 print(
-                    f"No main contact link for company {company_name} (ID: {company_id})"
+                    f"Placement {placement_id} payment type '{payment_type}' not in selected types"
                 )
                 continue
 
-            # Fetch main contact email
-            company_email = fetch_main_contact_email(main_contact_url, headers)
+            # Extract contact information
+            contact = placement_detail.get("contact", {})
+            contact_email = contact.get("email")
+            contact_first_name = contact.get("firstName", "")
+            contact_last_name = contact.get("lastName", "")
 
-            if not company_email:
-                print(
-                    f"No valid email found for company {company_name} (ID: {company_id})"
-                )
+            if not contact_email:
+                print(f"No contact email for placement {placement_id}")
                 continue
 
-            # Skip if we've already processed this email in this batch
-            if company_email in processed_emails:
-                continue
+            # Extract candidate information
+            candidate = placement_detail.get("candidate", {})
+            candidate_first_name = candidate.get("firstName", "")
+            candidate_last_name = candidate.get("lastName", "")
 
-            # Determine if email should be sent
-            if should_send_awr_email(config, company_email, placement_created_at):
-                companies_to_email.append(
+            # Extract job information
+            job_title = placement_detail.get("jobTitle", "")
+            start_date = placement_detail.get("startDate", "")
+
+            # Check if we should send email for this placement
+            if should_send_awr_email(config, placement_id):
+                eligible_placements.append(
                     {
-                        "company_id": company_id,
-                        "company_name": company_name,
-                        "company_email": "contactwnoor@gmail.com",
                         "placement_id": placement_id,
+                        "contact_email": contact_email,
+                        "contact_first_name": contact_first_name,
+                        "contact_last_name": contact_last_name,
+                        "candidate_first_name": candidate_first_name,
+                        "candidate_last_name": candidate_last_name,
                         "job_title": job_title,
-                        "placement_created_at": placement_created_at.isoformat(),
+                        "start_date": start_date,
+                        "payment_type": payment_type,
                     }
                 )
-                processed_emails.add(company_email)
-                break
 
-        print(f"Found {len(companies_to_email)} companies eligible for AWR emails")
-        return companies_to_email
+                print(f"Added placement {placement_id} to eligible list")
+
+        print(f"Found {len(eligible_placements)} eligible placements for AWR emails")
+        return eligible_placements
 
     except Exception as e:
         print(f"Error fetching placements: {str(e)}")
@@ -224,16 +205,19 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
 
 @shared_task
 def initiate_awr_compliance_email(
-    email: str,
-    company_id: int,
-    company_name: str,
-    organization_id: int,
     placement_id: int,
+    contact_email: str,
+    contact_first_name: str,
+    contact_last_name: str,
+    candidate_first_name: str,
+    candidate_last_name: str,
     job_title: str,
+    organization_id: int,
+    config_id: int,
 ):
-    """Send AWR compliance email to company"""
+    """Send AWR compliance email for a specific placement"""
     try:
-        config = AWRConfig.objects.get(organization_id=organization_id)
+        config = AWRConfig.objects.get(id=config_id)
         organization = Organization.objects.get(id=organization_id)
         organization_name = organization.name
 
@@ -246,32 +230,46 @@ def initiate_awr_compliance_email(
         org_encoded = encode_organization_id(organization_id)
         subject = f"AWR Compliance: Action Required for Placement #{placement_id} [{org_encoded}]"
 
+        # Prepare email context with placement details
+        contact_full_name = f"{contact_first_name} {contact_last_name}".strip()
+        candidate_full_name = f"{candidate_first_name} {candidate_last_name}".strip()
+
         email_context = {
-            "company_name": company_name,
+            "contact_first_name": contact_first_name,
+            "contact_last_name": contact_last_name,
+            "contact_full_name": contact_full_name,
+            "candidate_first_name": candidate_first_name,
+            "candidate_last_name": candidate_last_name,
+            "candidate_full_name": candidate_full_name,
             "organization_name": organization_name,
             "placement_id": placement_id,
             "job_title": job_title,
+            "weeks_threshold": config.placement_started_before_days // 7,
         }
 
         # Create or update tracker record
         tracker, created = AWRTracker.objects.update_or_create(
-            email=email,
-            config_id=config.id,
+            config=config,
+            placement_id=placement_id,
             defaults={
-                "updated_at": datetime.now(timezone.utc),
+                "contact_email": contact_email,
+                "last_sent_at": datetime.now(timezone.utc),
             },
         )
 
+        # Send email with configured template, sender, and reply-to
         send_email_task.delay(
             subject=subject,
-            recipient=email,
-            template_name="emails/awr_compliance_email.html",
+            recipient=contact_email,
+            template_name=config.email_template_name,
             context=email_context,
+            customer_email=config.email_sender,
+            reply_to=config.email_reply_to,
         )
 
         action = "created" if created else "updated"
         print(
-            f"AWR compliance email sent to {email} (Company: {company_name}, Tracker {action})"
+            f"AWR email sent to {contact_email} for placement {placement_id} (Tracker {action})"
         )
 
     except Exception as e:
@@ -289,31 +287,34 @@ def bulk_awr_compliance_emails(organization_id: int):
         print(f"Config or organization not found for organization {organization_id}")
         return
 
-    # Fetch placements and eligible companies
-    companies = fetch_placements_from_platform(config)
+    # Fetch eligible placements based on config criteria
+    placements = fetch_placements_from_platform(config)
 
-    if not companies:
-        print(f"No companies to send AWR emails for organization {organization_id}")
+    if not placements:
+        print(f"No eligible placements found for organization {organization_id}")
         return
 
     # Schedule emails with delay to avoid overwhelming the email system
-    for i, company in enumerate(companies):
+    for i, placement in enumerate(placements):
         countdown = i * 10  # 10 seconds delay between each email
 
         initiate_awr_compliance_email.apply_async(
             kwargs={
-                "email": company["company_email"],
-                "company_id": company["company_id"],
-                "company_name": company["company_name"],
+                "placement_id": placement["placement_id"],
+                "contact_email": placement["contact_email"],
+                "contact_first_name": placement["contact_first_name"],
+                "contact_last_name": placement["contact_last_name"],
+                "candidate_first_name": placement["candidate_first_name"],
+                "candidate_last_name": placement["candidate_last_name"],
+                "job_title": placement["job_title"],
                 "organization_id": organization_id,
-                "placement_id": company["placement_id"],
-                "job_title": company["job_title"],
+                "config_id": config.id,
             },
             countdown=countdown,
         )
 
     print(
-        f"Scheduled {len(companies)} AWR compliance emails for organization {organization.name}"
+        f"Scheduled {len(placements)} AWR compliance emails for organization {organization.name}"
     )
 
 
