@@ -9,13 +9,13 @@ from organizations.models import OrganizationPlatform
 
 
 def get_jobadder_placement_status_list(access_token, base_url):
-    url = f"{base_url}/v2/placements/lists/status"
+    url = f"{base_url}placements/lists/status"
     headers = {"Authorization": f"Bearer {access_token}"}
     return requests.get(url, headers=headers)
 
 
 def get_jobadder_payment_types_list(access_token, base_url):
-    url = f"{base_url}/v2/placements/lists/paymenttypes"
+    url = f"{base_url}placements/lists/paymenttypes"
     headers = {"Authorization": f"Bearer {access_token}"}
     return requests.get(url, headers=headers)
 
