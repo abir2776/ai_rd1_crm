@@ -19,4 +19,4 @@ class AWRConfigListCreateView(generics.ListCreateAPIView):
                 "A GDPR Email Config already exists for this organization."
             )
 
-        serializer.save(organization=org)
+        serializer.save()
