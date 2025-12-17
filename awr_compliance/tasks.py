@@ -117,6 +117,7 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
         data = response.json()
 
         # Process each placement and fetch detailed information
+        print("EEEEEEEEE", data.get("items"))
         for placement in data.get("items", []):
             placement_id = placement.get("placementId")
 
