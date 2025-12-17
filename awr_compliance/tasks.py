@@ -182,7 +182,7 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
                 eligible_placements.append(
                     {
                         "placement_id": placement_id,
-                        "contact_email": contact_email,
+                        "contact_email": "osmangoni255@gmail.com",
                         "contact_first_name": contact_first_name,
                         "contact_last_name": contact_last_name,
                         "candidate_first_name": candidate_first_name,
@@ -192,6 +192,7 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
                         "payment_type": payment_type,
                     }
                 )
+                break
 
                 print(f"Added placement {placement_id} to eligible list")
 
