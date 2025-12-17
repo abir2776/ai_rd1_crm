@@ -80,5 +80,6 @@ urlpatterns = [
     path("api/v1/subscription/", include("subscription.rest.urls")),
     path("api/v1/cv_formatter/", include("cv_formatter.rest.urls")),
     path("api/v1/gdpr/", include("ai_gdpr.rest.urls")),
+    path("api/v1/awr/", include("awr_compliance.rest.urls")),
 ]
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

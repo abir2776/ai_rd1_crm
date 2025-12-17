@@ -1,14 +1,14 @@
 from rest_framework import serializers
 
-from ai_gdpr.models import GDPREmailConfig
+from awr_compliance.models import AWRConfig
 from organizations.models import OrganizationPlatform
 
 
-class GDPREmailConfigSerializer(serializers.ModelSerializer):
+class AWRConfigSerializer(serializers.ModelSerializer):
     platform_uid = serializers.CharField(write_only=True)
 
     class Meta:
-        model = GDPREmailConfig
+        model = AWRConfig
         fields = "__all__"
         read_only_fields = ["id", "uid", "platform", "organization"]
 
@@ -19,6 +19,6 @@ class GDPREmailConfigSerializer(serializers.ModelSerializer):
         platform = OrganizationPlatform.objects.filter(uid=platform_uid).first()
         if not platform:
             raise serializers.ValidationError("Invalid platform uid")
-        return GDPREmailConfig.objects.create(
+        return AWRConfig.objects.create(
             organization=organization, platform=platform, **validated_data
         )
