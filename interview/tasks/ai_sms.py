@@ -53,9 +53,13 @@ Job Details:
         if job_details.get("bulletPoints"):
             bullet_points = job_details["bulletPoints"]
             if isinstance(bullet_points, list):
-                instructions += "- Key Points:\n"
+                instructions += f"- Key Points:\n"
                 for point in bullet_points:
                     instructions += f"  * {point}\n"
+            else:
+                instructions += f"- Key Points: {bullet_points}\n"
+        if job_details.get("description"):
+            instructions += f"- Description: {job_details['description']}\n"
         if job_details.get("location"):
             instructions += f"- Location: {job_details['location']}\n"
 
@@ -91,6 +95,7 @@ After primary questions, briefly ask about:
 - Say "20 pounds per hour" not "£20ph"
 - Use 12-hour format: "8 am" not "08:00"
 - Be clear and concise
+- Just tell the salary present in description don't ask expectations
 
 ## Ending the Interview
 When you determine the interview should end, include EXACTLY one of these tags:
@@ -218,7 +223,7 @@ def initiate_sms_interview(
         )
 
         # Create initial greeting message
-        initial_message = f"Hi {candidate_name}! This is Recruitment Direct AI. Thanks for applying for {job_title}. Ready to answer a few quick questions? Reply YES to start."
+        initial_message = f"Hi {candidate_name}! Welcome to the Recruitment Direct AI Platform. Thanks for applying for {job_title}. Ready to answer a few quick questions? Reply YES to start."
 
         # Create conversation record
         conversation = InterviewMessageConversation.objects.create(
