@@ -53,7 +53,7 @@ Job Details:
         if job_details.get("bulletPoints"):
             bullet_points = job_details["bulletPoints"]
             if isinstance(bullet_points, list):
-                instructions += f"- Key Points:\n"
+                instructions += "- Key Points:\n"
                 for point in bullet_points:
                     instructions += f"  * {point}\n"
             else:
@@ -213,6 +213,19 @@ def initiate_sms_interview(
     """Initiate a new SMS interview conversation"""
     try:
         # Generate AI instructions
+        running_interview = InterviewMessageConversation.objects.filter(
+            organization_id=organization_id,
+            application_id=application_id,
+            candidate_id=candidate_id,
+            candidate_phone=to_number,
+            jobad_id=job_ad_id,
+            type="AI_SMS",
+            status__in=[ProgressStatus.INITIATED, ProgressStatus.IN_PROGRESS],
+        )
+        if running_interview.exists():
+            print("Already initiated an interview for this position.")
+            return
+
         ai_instructions = generate_ai_sms_instructions(
             job_title=job_title,
             job_id=job_ad_id,
