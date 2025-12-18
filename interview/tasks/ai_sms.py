@@ -96,6 +96,7 @@ After primary questions, briefly ask about:
 - Use 12-hour format: "8 am" not "08:00"
 - Be clear and concise
 - Just tell the salary present in description don't ask expectations
+- https://forms.rd1.co.uk/pre-application give this link to candidate after successful interview if candidate is eligible to submit their documents.
 
 ## Ending the Interview
 When you determine the interview should end, include EXACTLY one of these tags:
@@ -236,7 +237,7 @@ def initiate_sms_interview(
         )
 
         # Create initial greeting message
-        initial_message = f"Hi {candidate_name}! Welcome to the Recruitment Direct AI Platform. Thanks for applying for {job_title}. Ready to answer a few quick questions? Reply YES to start."
+        initial_message = f"Hi {candidate_name}! Welcome to the Recruitment Direct AI Platform. Thanks for applying for {job_title}. Ready to answer a few quick questions to speed up your application? Reply YES to start."
 
         # Create conversation record
         conversation = InterviewMessageConversation.objects.create(
