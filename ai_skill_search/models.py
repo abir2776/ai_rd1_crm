@@ -1,7 +1,8 @@
 # models.py
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-from organizations.models import Organization
+
+from organizations.models import Organization, OrganizationPlatform
 
 
 class AISkillSearchConfig(models.Model):
@@ -10,6 +11,7 @@ class AISkillSearchConfig(models.Model):
     organization = models.OneToOneField(
         Organization, on_delete=models.CASCADE, related_name="ai_skill_search_config"
     )
+    platform = models.ForeignKey(OrganizationPlatform, on_delete=models.CASCADE)
 
     # Search radius in kilometers
     search_radius_km = models.IntegerField(
