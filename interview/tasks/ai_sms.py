@@ -96,7 +96,6 @@ After primary questions, briefly ask about:
 - Use 12-hour format: "8 am" not "08:00"
 - Be clear and concise
 - Just tell the salary present in description don't ask expectations
-- https://forms.rd1.co.uk/pre-application give this link to candidate after successful interview if candidate is eligible to submit their documents.
 
 ## Ending the Interview
 When you determine the interview should end, include EXACTLY one of these tags:
@@ -111,6 +110,7 @@ When you determine the interview should end, include EXACTLY one of these tags:
   * Answers all questions satisfactorily
   * Meets all requirements
   * Message: "Great! You'll receive further instructions soon to submit ID and certificates. Thanks!"
+  * "https://forms.rd1.co.uk/pre-application" give this link to candidate after successful interview if candidate is eligible to submit their documents.
 
 IMPORTANT: 
 - Always include the [END_INTERVIEW:status] tag when ending
