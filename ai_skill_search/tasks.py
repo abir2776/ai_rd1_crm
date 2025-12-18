@@ -267,7 +267,7 @@ def fetch_candidates_from_platform(
             # Check if candidate is in nearby cities and has allowed status
             if (
                 candidate_city in nearby_cities
-                and candidate_status in config.allowed_candidate_statuses
+                and candidate_status in config.candidate_status_ids
             ):
                 # Get full candidate details including skills and employment
                 candidate_id = candidate.get("candidateId")
