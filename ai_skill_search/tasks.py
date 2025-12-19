@@ -262,6 +262,7 @@ def fetch_candidates_from_platform(
             candidates_data = response.json()
 
             for candidate in candidates_data.get("items", []):
+                time.sleep(0.5)
                 candidate_status = candidate.get("status", {}).get("statusId", "")
 
                 if candidate_status in config.candidate_status_ids:
