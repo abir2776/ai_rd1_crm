@@ -173,7 +173,7 @@ def get_nearby_cities_with_ai(job_location_city: str, radius_km: int) -> list:
         return nearby_cities
 
     except Exception as e:
-        print(f"✗ Error getting nearby cities: {str(e)}")
+        print(f"✗ Error getting nearby cities: {str(e)}, city: {job_location_city}")
         return [job_location_city]
 
 
