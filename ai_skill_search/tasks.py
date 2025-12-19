@@ -265,9 +265,11 @@ def fetch_candidates_from_platform(
         candidates_data = response.json()
 
         # Filter candidates by cities and statuses
+        cities = []
         for candidate in candidates_data.get("items", []):
             candidate_city = candidate.get("address", {}).get("city", "")
             candidate_status = candidate.get("status", {}).get("name", "")
+            cities.appen(candidate_city)
 
             # Check if candidate is in nearby cities and has allowed status
             if (
@@ -290,6 +292,7 @@ def fetch_candidates_from_platform(
                     print(f"✓ Fetched candidate {candidate_id} from {candidate_city}")
 
         print(f"✓ Total candidates fetched: {len(all_candidates)}")
+        print(f"AI cities:{nearby_cities}, Candidate cities:{cities}")
         return all_candidates
 
     except Exception as e:
