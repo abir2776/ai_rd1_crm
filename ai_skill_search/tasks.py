@@ -414,10 +414,18 @@ def match_candidate_skills(
 def calculate_skill_match(candidate_skills: list, required_skills: list) -> tuple:
     """Calculate how many required skills match candidate skills"""
     matched_skills = []
+    matched_skill_ids = set()  # Track unique matches
 
     for req_skill in required_skills:
         req_category_id = int(req_skill.get("CategoryId"))
         req_sub_category_id = int(req_skill.get("Sub_categoryId"))
+
+        # Create unique identifier for this required skill
+        skill_key = (req_category_id, req_sub_category_id)
+
+        # Skip if we already matched this skill
+        if skill_key in matched_skill_ids:
+            continue
 
         for cand_skill in candidate_skills:
             cand_category_id = int(cand_skill.get("categoryId"))
@@ -432,7 +440,13 @@ def calculate_skill_match(candidate_skills: list, required_skills: list) -> tupl
                                 "Sub_categoryId": req_sub_category_id,
                             }
                         )
+                        matched_skill_ids.add(skill_key)  # Mark as matched
                         break
+
+                if (
+                    skill_key in matched_skill_ids
+                ):  # Found match, move to next required skill
+                    break
 
     match_percentage = (
         (len(matched_skills) / len(required_skills) * 100) if required_skills else 0
