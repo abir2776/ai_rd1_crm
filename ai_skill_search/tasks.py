@@ -312,7 +312,29 @@ def match_candidate_skills(
     Returns: (matched: bool, match_source: str, matched_skills: list, match_percentage: float)
     """
     candidate_id = candidate.get("candidateId")
-    candidate_skills = candidate.get("skills", [])
+    access_token = config.platform.access_token
+
+    if not access_token:
+        print("Error: Could not get JobAdder access token")
+        return []
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+    skill_url = f"{config.platform.base_url}/candidates/candidate_id/skills"
+    params = {"Limit": 100}
+    response = requests.get(skill_url, headers=headers, params=params, timeout=30)
+
+    if response.status_code == 401:
+        print("Access token expired, refreshing...")
+        access_token = config.platform.refresh_access_token()
+        if not access_token:
+            print("Error: Could not refresh access token")
+            return False, None, [], 0.0
+
+        headers["Authorization"] = f"Bearer {access_token}"
+        response = requests.get(skill_url, headers=headers, params=params, timeout=30)
+    candidate_skills = response.json().get("items", [])
     employment_history = candidate.get("employment", {})
 
     match_source = None
@@ -383,6 +405,9 @@ def calculate_skill_match(candidate_skills: list, required_skills: list) -> tupl
 
     match_percentage = (
         (len(matched_skills) / len(required_skills) * 100) if required_skills else 0
+    )
+    print(
+        f"matched_skills: {len(matched_skills)}, required_skills: {len(required_skills)}"
     )
     return matched_skills, match_percentage
 
