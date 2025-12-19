@@ -105,11 +105,7 @@ def extract_skills_from_job_description(job_ad_id: int, job_details: dict) -> li
             {"role": "user", "content": USER_INSTRUCTIONS_TEMPLATE},
         ]
 
-        resp = client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            temperature=0.3,
-        )
+        resp = client.chat.completions.create(model=MODEL, messages=messages)
 
         raw = resp.choices[0].message.content or ""
         content = strip_code_fences(raw)
@@ -153,7 +149,6 @@ def get_nearby_cities_with_ai(job_location_city: str, radius_km: int) -> list:
         resp = client.chat.completions.create(
             model=MODEL,
             messages=messages,
-            temperature=0.3,
         )
 
         raw = resp.choices[0].message.content or ""
@@ -199,7 +194,6 @@ def extract_skills_from_employment_history(employment_history: dict) -> list:
         resp = client.chat.completions.create(
             model=MODEL,
             messages=messages,
-            temperature=0.3,
         )
 
         raw = resp.choices[0].message.content or ""
