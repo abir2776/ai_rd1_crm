@@ -31,7 +31,7 @@ from .utils import (
 #### Testing Starts Here ####
 
 
-def cv_skills_extraction(candidate_id: int, attachmentId: int, base_url: str):
+def cv_skills_extraction(candidate_id: int, attachmentId: int, config):
     print("****************** Here starts CV processing *****************")
 
     # Ensure CV folder exists
@@ -43,22 +43,41 @@ def cv_skills_extraction(candidate_id: int, attachmentId: int, base_url: str):
         download_dir, f"candidate_{candidate_id}_attachment_{attachmentId}.pdf"
     )
 
-    # Download CV using base_url
-    download_url = f"{base_url}/candidates/{candidate_id}/attachments/{attachmentId}"
+    # JobAdder attachment URL
+    download_url = f"{config.platform.base_url}/candidates/{candidate_id}/attachments/{attachmentId}"
 
-    download_resume = requests.get(download_url, timeout=60)
+    # Initial headers
+    access_token = config.platform.access_token
+    headers = {"Authorization": f"Bearer {access_token}", "Accept": "application/pdf"}
 
-    if download_resume.status_code not in (200, 201):
+    # Download CV
+    response = requests.get(download_url, headers=headers, stream=True, timeout=60)
+
+    # Refresh token if 401
+    if response.status_code == 401:
+        print("Access token expired, refreshing...")
+        access_token = config.platform.refresh_access_token()
+        if not access_token:
+            print("Error: Could not refresh access token")
+            return None
+
+        headers["Authorization"] = f"Bearer {access_token}"
+        response = requests.get(download_url, headers=headers, stream=True, timeout=60)
+
+    if response.status_code != 200:
         print(
             f"Failed to download resume for Candidate ID {candidate_id}. "
-            f"Status code: {download_resume.status_code}"
+            f"Status code: {response.status_code}"
         )
         return None
 
-    response_json = download_resume.json()
-    if not response_json.get("success"):
-        print("CV download failed:", response_json)
-        return None
+    # Save CV
+    with open(cv_file_path, "wb") as f:
+        for chunk in response.iter_content(chunk_size=8192):
+            if chunk:
+                f.write(chunk)
+
+    print("CV downloaded successfully")
 
     # Step 1: process CV
     cleaned_cv_text = process_cv(cv_file_path)
@@ -94,7 +113,6 @@ def cv_skills_extraction(candidate_id: int, attachmentId: int, base_url: str):
     resp = client.chat.completions.create(
         model=MODEL,
         messages=messages,
-        # DO NOT send temperature/top_p/etc. for this model
     )
 
     raw = resp.choices[0].message.content or ""
