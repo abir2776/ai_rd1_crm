@@ -98,7 +98,7 @@ def extract_skills_from_job_description(job_ad_id: int, job_details: dict) -> li
         )
 
         client = OpenAI(api_key=OPENAI_API_KEY)
-        MODEL = "gpt-5-nano-2025-08-07"
+        MODEL = "gpt-4o"
 
         messages = [
             {"role": "system", "content": SYSTEM_INSTRUCTIONS},
@@ -135,7 +135,7 @@ def get_nearby_cities_with_ai(job_location_city: str, radius_km: int) -> list:
     """
     try:
         client = OpenAI(api_key=OPENAI_API_KEY)
-        MODEL = "gpt-5-nano-2025-08-07"
+        MODEL = "gpt-4o"
 
         SYSTEM_INSTRUCTIONS, USER_INSTRUCTIONS = get_instructions_nearby_cities(
             job_location_city, radius_km
@@ -184,7 +184,7 @@ def extract_skills_from_employment_history(employment_history: dict) -> list:
         )
 
         client = OpenAI(api_key=OPENAI_API_KEY)
-        MODEL = "gpt-5-nano-2025-08-07"
+        MODEL = "gpt-4o"
 
         messages = [
             {"role": "system", "content": SYSTEM_INSTRUCTIONS},
@@ -333,7 +333,7 @@ def match_candidate_skills(
         employment_skills = extract_skills_from_employment_history(employment_history)
 
         if employment_skills:
-            update_candidate_skills_in_platform(candidate_id, employment_skills, config)
+            # update_candidate_skills_in_platform(candidate_id, employment_skills, config)
             skills_dict = convert_ai_skills_to_candidate_format(employment_skills)
             matched_skills, match_percentage = calculate_skill_match(
                 skills_dict, required_skills
