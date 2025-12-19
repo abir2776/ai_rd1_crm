@@ -268,7 +268,7 @@ def fetch_candidates_from_platform(
         cities = []
         for candidate in candidates_data.get("items", []):
             candidate_city = candidate.get("address", {}).get("city", "")
-            candidate_status = candidate.get("status", {}).get("name", "")
+            candidate_status = candidate.get("status", {}).get("statusId", "")
             cities.append(candidate_city)
 
             # Check if candidate is in nearby cities and has allowed status
