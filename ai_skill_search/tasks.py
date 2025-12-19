@@ -1,6 +1,7 @@
 # tasks.py
 import json
 import os
+import re
 import time
 from datetime import datetime
 
@@ -261,7 +262,7 @@ def fetch_candidates_from_platform(
 
         # Filter candidates by cities and statuses
         for candidate in candidates_data.get("items", []):
-            candidate_city = candidate.get("location", {}).get("city", "")
+            candidate_city = candidate.get("address", {}).get("city", "")
             candidate_status = candidate.get("status", {}).get("name", "")
 
             # Check if candidate is in nearby cities and has allowed status
@@ -581,8 +582,8 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
             "description": job_data.get("description", ""),
             "summary": job_data.get("summary", ""),
         }
-        location = job_data.get("location", {})
-        location_city = location.get("city", "")
+        match = re.search(r"\|\s*([^|]+)$", job_details["title"])
+        location_city = match.group(1) if match else None
 
     except Exception as e:
         print(f"✗ Error fetching job details: {str(e)}")
@@ -605,7 +606,7 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
         job_ad_id=job_ad_id,
         organization_id=organization_id,
         job_title=job_details.get("title", ""),
-        job_location=f"{location_city}, {location.get('state', '')}",
+        job_location=location_city,
         job_location_city=location_city,
         required_skills=required_skills,
         nearby_cities=nearby_cities,
