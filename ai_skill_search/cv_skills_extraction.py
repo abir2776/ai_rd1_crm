@@ -119,7 +119,7 @@ def cv_skills_extraction(candidate_id: int, attachmentId: int, config):
 
         # Step 3: call OpenAI
         client = OpenAI(api_key=os.getenv("OPENAI_API"))
-        MODEL = "gpt-4o"
+        MODEL = "gpt-4-mini-2025-01-07"
 
         messages = [
             {"role": "system", "content": SYSTEM_INSTRUCTIONS},
@@ -140,6 +140,27 @@ def cv_skills_extraction(candidate_id: int, attachmentId: int, config):
         except json.JSONDecodeError:
             ai_response = find_json_block(content)
             data = json.loads(ai_response)
+
+        # Convert string IDs to integers
+        if "skills" in data and isinstance(data["skills"], list):
+            for skill in data["skills"]:
+                if "CategoryId" in skill and isinstance(skill["CategoryId"], str):
+                    try:
+                        skill["CategoryId"] = int(skill["CategoryId"])
+                    except (ValueError, TypeError):
+                        print(
+                            f"Warning: Could not convert CategoryId '{skill['CategoryId']}' to integer"
+                        )
+
+                if "Sub_categoryId" in skill and isinstance(
+                    skill["Sub_categoryId"], str
+                ):
+                    try:
+                        skill["Sub_categoryId"] = int(skill["Sub_categoryId"])
+                    except (ValueError, TypeError):
+                        print(
+                            f"Warning: Could not convert Sub_categoryId '{skill['Sub_categoryId']}' to integer"
+                        )
 
         # Validate schema
         try:
