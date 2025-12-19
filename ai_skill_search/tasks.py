@@ -432,7 +432,9 @@ def extract_skills_from_cv(candidate_id: int, config: AISkillSearchConfig) -> li
         attachment_id = attachments[0].get("attachmentId")
 
         # Extract skills from CV
-        skills_from_cv = cv_skills_extraction(candidate_id, attachment_id)
+        skills_from_cv = cv_skills_extraction(
+            candidate_id, attachment_id, config.platform.base_url
+        )
 
         if skills_from_cv and skills_from_cv.get("skills"):
             print(f"  ✓ Extracted {len(skills_from_cv['skills'])} skills from CV")
