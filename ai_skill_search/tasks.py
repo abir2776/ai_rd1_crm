@@ -244,8 +244,10 @@ def fetch_candidates_from_platform(
     try:
         # Get candidates URL - you may need to adjust this based on your platform's API
         candidates_url = f"{config.platform.base_url}/candidates"
-
-        response = requests.get(candidates_url, headers=headers, timeout=30)
+        params = {"Limit": 1000}
+        response = requests.get(
+            candidates_url, headers=headers, params=params, timeout=30
+        )
 
         if response.status_code == 401:
             print("Access token expired, refreshing...")
@@ -255,7 +257,9 @@ def fetch_candidates_from_platform(
                 return []
 
             headers["Authorization"] = f"Bearer {access_token}"
-            response = requests.get(candidates_url, headers=headers, timeout=30)
+            response = requests.get(
+                candidates_url, headers=headers, params=params, timeout=30
+            )
 
         response.raise_for_status()
         candidates_data = response.json()
