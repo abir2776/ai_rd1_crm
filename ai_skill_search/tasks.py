@@ -316,27 +316,58 @@ def match_candidate_skills(
 
     if not access_token:
         print("Error: Could not get JobAdder access token")
-        return []
+        return False, None, [], 0.0  # Fixed: consistent return type
+
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
-    skill_url = f"{config.platform.base_url}/candidates/candidate_id/skills"
-    params = {"Limit": 100}
-    response = requests.get(skill_url, headers=headers, params=params, timeout=30)
 
-    if response.status_code == 401:
-        print("Access token expired, refreshing...")
-        access_token = config.platform.refresh_access_token()
-        if not access_token:
-            print("Error: Could not refresh access token")
+    # Fixed: Use actual candidate_id instead of literal string
+    skill_url = f"{config.platform.base_url}/candidates/{candidate_id}/skills"
+    params = {"Limit": 100}
+
+    try:
+        response = requests.get(skill_url, headers=headers, params=params, timeout=30)
+
+        if response.status_code == 401:
+            print("Access token expired, refreshing...")
+            access_token = config.platform.refresh_access_token()
+            if not access_token:
+                print("Error: Could not refresh access token")
+                return False, None, [], 0.0
+
+            headers["Authorization"] = f"Bearer {access_token}"
+            response = requests.get(
+                skill_url, headers=headers, params=params, timeout=30
+            )
+
+        # Check for successful response
+        if response.status_code not in [200, 201]:
+            print(
+                f"  ✗ Failed to fetch skills for candidate {candidate_id}: Status {response.status_code}"
+            )
             return False, None, [], 0.0
 
-        headers["Authorization"] = f"Bearer {access_token}"
-        response = requests.get(skill_url, headers=headers, params=params, timeout=30)
-    candidate_skills = response.json().get("items", [])
-    employment_history = candidate.get("employment", {})
+        # Validate response before parsing JSON
+        if not response.text or not response.text.strip():
+            print(
+                f"  ✗ Empty response when fetching skills for candidate {candidate_id}"
+            )
+            return False, None, [], 0.0
 
+        try:
+            candidate_skills = response.json().get("items", [])
+        except json.JSONDecodeError as e:
+            print(f"  ✗ Invalid JSON response for candidate {candidate_id}: {str(e)}")
+            print(f"  Response text: {response.text[:200]}")
+            return False, None, [], 0.0
+
+    except requests.RequestException as e:
+        print(f"  ✗ Request failed for candidate {candidate_id}: {str(e)}")
+        return False, None, [], 0.0
+
+    employment_history = candidate.get("employment", {})
     match_source = None
     matched_skills = []
 
