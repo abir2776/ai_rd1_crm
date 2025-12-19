@@ -98,7 +98,7 @@ def extract_skills_from_job_description(job_ad_id: int, job_details: dict) -> li
         )
 
         client = OpenAI(api_key=OPENAI_API_KEY)
-        MODEL = "gpt-4o"
+        MODEL = "gpt-5-nano-2025-08-07"
 
         messages = [
             {"role": "system", "content": SYSTEM_INSTRUCTIONS},
@@ -139,7 +139,7 @@ def get_nearby_cities_with_ai(job_location_city: str, radius_km: int) -> list:
     """
     try:
         client = OpenAI(api_key=OPENAI_API_KEY)
-        MODEL = "gpt-4o"
+        MODEL = "gpt-5-nano-2025-08-07"
 
         SYSTEM_INSTRUCTIONS, USER_INSTRUCTIONS = get_instructions_nearby_cities(
             job_location_city, radius_km
@@ -189,7 +189,7 @@ def extract_skills_from_employment_history(employment_history: dict) -> list:
         )
 
         client = OpenAI(api_key=OPENAI_API_KEY)
-        MODEL = "gpt-4o"
+        MODEL = "gpt-5-nano-2025-08-07"
 
         messages = [
             {"role": "system", "content": SYSTEM_INSTRUCTIONS},
@@ -226,7 +226,7 @@ def fetch_candidates_from_platform(
     nearby_cities: list, config: AISkillSearchConfig, job_ad_id: int
 ) -> list:
     """
-    Fetch candidates directly from JobAdder platform API
+    Fetch candidates directly from JobAdder platform API by searching each nearby city
     """
     access_token = config.platform.access_token
 
@@ -240,59 +240,56 @@ def fetch_candidates_from_platform(
     }
 
     all_candidates = []
+    candidates_url = f"{config.platform.base_url}/candidates"
 
     try:
-        # Get candidates URL - you may need to adjust this based on your platform's API
-        candidates_url = f"{config.platform.base_url}/candidates"
-        params = {"Limit": 1000}
-        response = requests.get(
-            candidates_url, headers=headers, params=params, timeout=30
-        )
+        for city in nearby_cities:
+            print(f"Searching candidates in {city}...")
 
-        if response.status_code == 401:
-            print("Access token expired, refreshing...")
-            access_token = config.platform.refresh_access_token()
-            if not access_token:
-                print("Error: Could not refresh access token")
-                return []
+            params = {"Limit": 1000, "City": city}
 
-            headers["Authorization"] = f"Bearer {access_token}"
             response = requests.get(
                 candidates_url, headers=headers, params=params, timeout=30
             )
 
-        response.raise_for_status()
-        candidates_data = response.json()
+            if response.status_code == 401:
+                print("Access token expired, refreshing...")
+                access_token = config.platform.refresh_access_token()
+                if not access_token:
+                    print("Error: Could not refresh access token")
+                    return []
 
-        # Filter candidates by cities and statuses
-        cities = []
-        for candidate in candidates_data.get("items", []):
-            candidate_city = candidate.get("address", {}).get("city", "")
-            candidate_status = candidate.get("status", {}).get("statusId", "")
-            cities.append(candidate_city)
-
-            # Check if candidate is in nearby cities and has allowed status
-            if (
-                candidate_city in nearby_cities
-                and candidate_status in config.candidate_status_ids
-            ):
-                # Get full candidate details including skills and employment
-                candidate_id = candidate.get("candidateId")
-                candidate_details_url = (
-                    f"{config.platform.base_url}/candidates/{candidate_id}"
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = requests.get(
+                    candidates_url, headers=headers, params=params, timeout=30
                 )
 
-                details_response = requests.get(
-                    candidate_details_url, headers=headers, timeout=30
-                )
+            response.raise_for_status()
+            candidates_data = response.json()
 
-                if details_response.status_code == 200:
-                    full_candidate = details_response.json()
-                    all_candidates.append(full_candidate)
-                    print(f"✓ Fetched candidate {candidate_id} from {candidate_city}")
+            for candidate in candidates_data.get("items", []):
+                candidate_status = candidate.get("status", {}).get("statusId", "")
+
+                if candidate_status in config.candidate_status_ids:
+                    candidate_id = candidate.get("candidateId")
+                    candidate_details_url = (
+                        f"{config.platform.base_url}/candidates/{candidate_id}"
+                    )
+
+                    details_response = requests.get(
+                        candidate_details_url, headers=headers, timeout=30
+                    )
+
+                    if details_response.status_code == 200:
+                        full_candidate = details_response.json()
+                        all_candidates.append(full_candidate)
+                        print(f"✓ Fetched candidate {candidate_id} from {city}")
+
+            print(
+                f"✓ Found {len(candidates_data.get('items', []))} candidates in {city}"
+            )
 
         print(f"✓ Total candidates fetched: {len(all_candidates)}")
-        print(f"AI cities:{nearby_cities}, Candidate cities:{cities}")
         return all_candidates
 
     except Exception as e:
