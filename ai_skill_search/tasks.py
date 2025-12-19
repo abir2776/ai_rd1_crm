@@ -219,9 +219,6 @@ def extract_skills_from_employment_history(employment_history: dict) -> list:
 def fetch_candidates_from_platform(
     nearby_cities: list, config: AISkillSearchConfig, job_ad_id: int
 ) -> list:
-    """
-    Fetch candidates directly from JobAdder platform API by searching each nearby city
-    """
     access_token = config.platform.access_token
 
     if not access_token:
@@ -234,14 +231,15 @@ def fetch_candidates_from_platform(
     }
 
     all_candidates = []
-    candidates_url = f"{config.platform.base_url}/candidates"
+    limit = 100
+    offset = 0
+    total_fetched = 0
 
     try:
-        for city in nearby_cities:
-            print(f"Searching candidates in {city}...")
+        candidates_url = f"{config.platform.base_url}/candidates"
 
-            params = {"Limit": 1000, "City": city}
-
+        while True:
+            params = {"Limit": limit, "Offset": offset}
             response = requests.get(
                 candidates_url, headers=headers, params=params, timeout=30
             )
@@ -251,7 +249,7 @@ def fetch_candidates_from_platform(
                 access_token = config.platform.refresh_access_token()
                 if not access_token:
                     print("Error: Could not refresh access token")
-                    return []
+                    return all_candidates
 
                 headers["Authorization"] = f"Bearer {access_token}"
                 response = requests.get(
@@ -260,12 +258,21 @@ def fetch_candidates_from_platform(
 
             response.raise_for_status()
             candidates_data = response.json()
+            items = candidates_data.get("items", [])
+            if not items:
+                print("No more candidates to fetch")
+                break
 
-            for candidate in candidates_data.get("items", []):
-                time.sleep(0.5)
+            print(f"Processing batch: offset={offset}, count={len(items)}")
+
+            for candidate in items:
+                candidate_city = candidate.get("address", {}).get("city", "")
                 candidate_status = candidate.get("status", {}).get("statusId", "")
 
-                if candidate_status in config.candidate_status_ids:
+                if (
+                    candidate_city in nearby_cities
+                    and candidate_status in config.candidate_status_ids
+                ):
                     candidate_id = candidate.get("candidateId")
                     candidate_details_url = (
                         f"{config.platform.base_url}/candidates/{candidate_id}"
@@ -278,18 +285,23 @@ def fetch_candidates_from_platform(
                     if details_response.status_code == 200:
                         full_candidate = details_response.json()
                         all_candidates.append(full_candidate)
-                        print(f"✓ Fetched candidate {candidate_id} from {city}")
+                        print(
+                            f"✓ Fetched candidate {candidate_id} from {candidate_city}"
+                        )
 
-            print(
-                f"✓ Found {len(candidates_data.get('items', []))} candidates in {city}"
-            )
+            total_fetched += len(items)
+            if len(items) < limit:
+                print("Reached last page of results")
+                break
+            offset += limit
 
-        print(f"✓ Total candidates fetched: {len(all_candidates)}")
+        print(f"✓ Total candidates processed: {total_fetched}")
+        print(f"✓ Total matching candidates fetched: {len(all_candidates)}")
         return all_candidates
 
     except Exception as e:
         print(f"✗ Error fetching candidates from platform: {str(e)}")
-        return []
+        return all_candidates
 
 
 def match_candidate_skills(
