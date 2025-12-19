@@ -541,7 +541,6 @@ def send_whatsapp_notification(candidate_id: int, job_ad_id: int, candidate_phon
         return False
 
 
-@shared_task
 def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
     """Process a single job for AI skill matching"""
     try:
@@ -771,9 +770,7 @@ def scan_and_process_live_jobs_for_all_organizations():
                     continue
 
                 # Process job asynchronously
-                process_single_job_for_skill_matching.delay(
-                    job_ad_id, config.organization_id
-                )
+                process_single_job_for_skill_matching(job_ad_id, config.organization_id)
                 total_processed += 1
                 time.sleep(1)  # Rate limiting
 

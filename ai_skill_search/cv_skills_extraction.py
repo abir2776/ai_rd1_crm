@@ -119,7 +119,7 @@ def cv_skills_extraction(candidate_id: int, attachmentId: int, config):
 
         # Step 3: call OpenAI
         client = OpenAI(api_key=os.getenv("OPENAI_API"))
-        MODEL = "gpt-4-mini-2025-01-07"
+        MODEL = "gpt-4o"
 
         messages = [
             {"role": "system", "content": SYSTEM_INSTRUCTIONS},
