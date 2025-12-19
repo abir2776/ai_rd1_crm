@@ -338,18 +338,18 @@ def match_candidate_skills(
                 return True, "employment_history", matched_skills, match_percentage
 
     # Step 3: Extract skills from CV
-    if config.process_cv_for_skills:
-        print(f"  → Processing CV for candidate {candidate_id}")
-        cv_skills = extract_skills_from_cv(candidate_id, config)
+    # if config.process_cv_for_skills:
+    #     print(f"  → Processing CV for candidate {candidate_id}")
+    #     cv_skills = extract_skills_from_cv(candidate_id, config)
 
-        if cv_skills:
-            update_candidate_skills_in_platform(candidate_id, cv_skills, config)
-            skills_dict = convert_ai_skills_to_candidate_format(cv_skills)
-            matched_skills, match_percentage = calculate_skill_match(
-                skills_dict, required_skills
-            )
-            if match_percentage >= config.minimum_skill_match_percentage:
-                return True, "cv_extraction", matched_skills, match_percentage
+    #     if cv_skills:
+    #         update_candidate_skills_in_platform(candidate_id, cv_skills, config)
+    #         skills_dict = convert_ai_skills_to_candidate_format(cv_skills)
+    #         matched_skills, match_percentage = calculate_skill_match(
+    #             skills_dict, required_skills
+    #         )
+    #         if match_percentage >= config.minimum_skill_match_percentage:
+    #             return True, "cv_extraction", matched_skills, match_percentage
 
     return False, None, [], 0.0
 
