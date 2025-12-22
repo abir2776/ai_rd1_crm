@@ -27,6 +27,7 @@ from ai_skill_search.utils import (
     return_Schema_require_skills,
     strip_code_fences,
 )
+from subscription.models import Subscription
 
 from .cv_skills_extraction import cv_skills_extraction
 
@@ -777,7 +778,7 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
 
 
 @shared_task
-def scan_and_process_live_jobs_for_all_organizations():
+def scan_and_process_live_jobs_for_all_organizations(organization_ids):
     """
     Main task: Scan all live jobs and process new ones
     """
@@ -787,7 +788,9 @@ def scan_and_process_live_jobs_for_all_organizations():
     print(f"{'#' * 80}\n")
 
     # Get all active configs
-    active_configs = AISkillSearchConfig.objects.filter(is_active=True)
+    active_configs = AISkillSearchConfig.objects.filter(
+        organization_id__in=organization_ids, is_active=True
+    )
 
     if not active_configs.exists():
         print("✗ No active AI skill search configurations found")
@@ -862,4 +865,7 @@ def initiate_ai_skill_search():
     """
     Periodic task to be run every 3 hours
     """
-    scan_and_process_live_jobs_for_all_organizations.delay()
+    subscribed_organization_ids = Subscription.objects.filter(
+        available_limit__gt=0,
+    ).values_list("organization_id", flat=True)
+    scan_and_process_live_jobs_for_all_organizations.delay(subscribed_organization_ids)
