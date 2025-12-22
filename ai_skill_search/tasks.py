@@ -1,4 +1,3 @@
-# tasks.py
 import json
 import os
 import re
@@ -38,7 +37,6 @@ OPENAI_API_KEY = os.getenv("OPENAI_API")
 
 
 def coerce_int_fields(data, fields=("CategoryId", "Sub_categoryId")):
-    """Convert string IDs to integers"""
     for item in data.get("skills_acquired", []) or data.get("skills_required", []):
         for f in fields:
             v = item.get(f)
@@ -49,7 +47,6 @@ def coerce_int_fields(data, fields=("CategoryId", "Sub_categoryId")):
 def fetch_job_details_from_platform(
     job_self_url: str, config: AISkillSearchConfig
 ) -> dict:
-    """Fetch job details directly from JobAdder platform"""
     access_token = config.platform.access_token
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -84,9 +81,6 @@ def fetch_job_details_from_platform(
 
 
 def extract_skills_from_job_description(job_ad_id: int, job_details: dict) -> list:
-    """
-    Task 1: Use GPT-4o to extract required skills from job description
-    """
     try:
         skills_data = get_skills_collection()
         skills_str = json.dumps(skills_data)
@@ -131,9 +125,6 @@ def extract_skills_from_job_description(job_ad_id: int, job_details: dict) -> li
 
 
 def get_nearby_cities_with_ai(job_location_city: str, radius_km: int) -> list:
-    """
-    Task 2: Use GPT-4o to get nearby cities within radius
-    """
     try:
         client = OpenAI(api_key=OPENAI_API_KEY)
         MODEL = "gpt-4o"
@@ -174,7 +165,6 @@ def get_nearby_cities_with_ai(job_location_city: str, radius_km: int) -> list:
 
 
 def extract_skills_from_employment_history(employment_history: dict) -> list:
-    """Extract skills from candidate's employment history using AI"""
     try:
         skills_data = get_skills_collection()
         skills_list = json.dumps(skills_data)
@@ -308,23 +298,17 @@ def fetch_candidates_from_platform(
 def match_candidate_skills(
     candidate: dict, required_skills: list, config: AISkillSearchConfig
 ) -> tuple:
-    """
-    Task 4: Match candidate skills with required skills
-    Returns: (matched: bool, match_source: str, matched_skills: list, match_percentage: float)
-    """
     candidate_id = candidate.get("candidateId")
     access_token = config.platform.access_token
 
     if not access_token:
         print("Error: Could not get JobAdder access token")
-        return False, None, [], 0.0  # Fixed: consistent return type
+        return False, None, [], 0.0
 
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",
     }
-
-    # Fixed: Use actual candidate_id instead of literal string
     skill_url = f"{config.platform.base_url}/candidates/{candidate_id}/skills"
     params = {"Limit": 100}
 
@@ -342,15 +326,11 @@ def match_candidate_skills(
             response = requests.get(
                 skill_url, headers=headers, params=params, timeout=30
             )
-
-        # Check for successful response
         if response.status_code not in [200, 201]:
             print(
                 f"  ✗ Failed to fetch skills for candidate {candidate_id}: Status {response.status_code}"
             )
             return False, None, [], 0.0
-
-        # Validate response before parsing JSON
         if not response.text or not response.text.strip():
             print(
                 f"  ✗ Empty response when fetching skills for candidate {candidate_id}"
@@ -371,8 +351,6 @@ def match_candidate_skills(
     employment_history = candidate.get("employment", {})
     match_source = None
     matched_skills = []
-
-    # Step 1: Check direct skills
     if candidate_skills and len(candidate_skills) > 0:
         print(f"  → Checking direct skills for candidate {candidate_id}")
         matched_skills, match_percentage = calculate_skill_match(
@@ -380,14 +358,11 @@ def match_candidate_skills(
         )
         if match_percentage >= config.minimum_skill_match_percentage:
             return True, "direct_skills", matched_skills, match_percentage
-
-    # Step 2: Check employment history
     if config.consider_employment_history and employment_history:
         print(f"  → Checking employment history for candidate {candidate_id}")
         employment_skills = extract_skills_from_employment_history(employment_history)
 
         if employment_skills:
-            # update_candidate_skills_in_platform(candidate_id, employment_skills, config)
             skills_dict = convert_ai_skills_to_candidate_format(employment_skills)
             matched_skills, match_percentage = calculate_skill_match(
                 skills_dict, required_skills
@@ -415,16 +390,12 @@ def match_candidate_skills(
 def calculate_skill_match(candidate_skills: list, required_skills: list) -> tuple:
     """Calculate how many required skills match candidate skills"""
     matched_skills = []
-    matched_skill_ids = set()  # Track unique matches
+    matched_skill_ids = set()
 
     for req_skill in required_skills:
         req_category_id = int(req_skill.get("CategoryId"))
         req_sub_category_id = int(req_skill.get("Sub_categoryId"))
-
-        # Create unique identifier for this required skill
         skill_key = (req_category_id, req_sub_category_id)
-
-        # Skip if we already matched this skill
         if skill_key in matched_skill_ids:
             continue
 
@@ -441,12 +412,10 @@ def calculate_skill_match(candidate_skills: list, required_skills: list) -> tupl
                                 "Sub_categoryId": req_sub_category_id,
                             }
                         )
-                        matched_skill_ids.add(skill_key)  # Mark as matched
+                        matched_skill_ids.add(skill_key)
                         break
 
-                if (
-                    skill_key in matched_skill_ids
-                ):  # Found match, move to next required skill
+                if skill_key in matched_skill_ids:
                     break
 
     match_percentage = (
@@ -459,7 +428,6 @@ def calculate_skill_match(candidate_skills: list, required_skills: list) -> tupl
 
 
 def convert_ai_skills_to_candidate_format(ai_skills: list) -> list:
-    """Convert AI extracted skills to candidate skills format"""
     skills_dict = []
     for skill in ai_skills:
         skill_entry = {
@@ -475,15 +443,12 @@ def convert_ai_skills_to_candidate_format(ai_skills: list) -> list:
 
 
 def extract_skills_from_cv(candidate_id: int, config: AISkillSearchConfig) -> list:
-    """Extract skills from candidate's CV using platform API"""
     try:
         access_token = config.platform.access_token
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
-
-        # Get candidate attachments
         attachments_url = (
             f"{config.platform.base_url}/candidates/{candidate_id}/attachments"
         )
@@ -505,8 +470,6 @@ def extract_skills_from_cv(candidate_id: int, config: AISkillSearchConfig) -> li
             return []
 
         attachment_id = attachments[0].get("attachmentId")
-
-        # Extract skills from CV
         skills_from_cv = cv_skills_extraction(candidate_id, attachment_id, config)
 
         if skills_from_cv and skills_from_cv.get("skills"):
@@ -523,7 +486,6 @@ def extract_skills_from_cv(candidate_id: int, config: AISkillSearchConfig) -> li
 def update_candidate_skills_in_platform(
     candidate_id: int, skills: list, config: AISkillSearchConfig
 ):
-    """Update candidate skills in JobAdder platform"""
     try:
         access_token = config.platform.access_token
         headers = {
@@ -562,15 +524,12 @@ def update_candidate_skills_in_platform(
 def create_application_for_candidate(
     candidate_id: int, job_ad_id: int, config: AISkillSearchConfig
 ) -> int:
-    """Create application for matched candidate on JobAdder platform"""
     try:
         access_token = config.platform.access_token
         headers = {
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
-
-        # Create application
         application_url = f"{config.platform.base_url}/applications"
         application_body = {
             "candidateId": candidate_id,
@@ -606,9 +565,7 @@ def create_application_for_candidate(
 
 
 def send_whatsapp_notification(candidate_id: int, job_ad_id: int, candidate_phone: str):
-    """Task 5: Send WhatsApp message to matched candidate"""
     try:
-        # Implement WhatsApp notification logic here
         print(f"  ✓ WhatsApp notification sent to candidate {candidate_id}")
         return True
     except Exception as e:
@@ -617,7 +574,6 @@ def send_whatsapp_notification(candidate_id: int, job_ad_id: int, candidate_phon
 
 
 def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
-    """Process a single job for AI skill matching"""
     try:
         config = AISkillSearchConfig.objects.get(
             organization_id=organization_id, is_active=True
@@ -625,8 +581,6 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
     except AISkillSearchConfig.DoesNotExist:
         print(f"✗ No active AI skill search config for organization {organization_id}")
         return
-
-    # Check if job already processed
     existing_cache = JobSkillCache.objects.filter(job_ad_id=job_ad_id).first()
     if existing_cache:
         print(f"⚠ Job {job_ad_id} already processed")
@@ -635,8 +589,6 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
     print(f"\n{'=' * 60}")
     print(f"Processing Job {job_ad_id} for Organization {organization_id}")
     print(f"{'=' * 60}")
-
-    # Get job details from platform
     try:
         access_token = config.platform.access_token
         headers = {
@@ -669,20 +621,14 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
     except Exception as e:
         print(f"✗ Error fetching job details: {str(e)}")
         return
-
-    # Task 1: Extract required skills from job description
     print("\n[Task 1] Extracting required skills...")
     required_skills = extract_skills_from_job_description(job_ad_id, job_details)
 
     if not required_skills:
         print(f"✗ No skills extracted, skipping job {job_ad_id}")
         return
-
-    # Task 2: Get nearby cities
     print(f"\n[Task 2] Finding nearby cities within {config.search_radius_km}km...")
     nearby_cities = get_nearby_cities_with_ai(location_city, config.search_radius_km)
-
-    # Create job skill cache
     job_cache = JobSkillCache.objects.create(
         job_ad_id=job_ad_id,
         organization_id=organization_id,
@@ -693,16 +639,12 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
         nearby_cities=nearby_cities,
         job_description=job_details,
     )
-
-    # Task 3: Fetch candidates from platform
     print("\n[Task 3] Fetching candidates from platform...")
     candidates = fetch_candidates_from_platform(nearby_cities, config, job_ad_id)
 
     if not candidates:
         print("✗ No candidates found")
         return
-
-    # Task 4: Match candidates
     print("\n[Task 4] Matching candidates with required skills...")
     matched_count = 0
 
@@ -715,8 +657,6 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
         print(
             f"\n[{idx}/{len(candidates[: config.max_candidates_per_job])}] Candidate {candidate_id} - {candidate_name}"
         )
-
-        # Check if already matched
         existing_match = CandidateSkillMatch.objects.filter(
             candidate_id=candidate_id, job_ad_id=job_ad_id
         ).first()
@@ -724,8 +664,6 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
         if existing_match:
             print("  ⚠ Already matched previously")
             continue
-
-        # Match skills
         is_matched, match_source, matched_skills, match_percentage = (
             match_candidate_skills(candidate, required_skills, config)
         )
@@ -736,22 +674,16 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
 
             application_id = None
             whatsapp_sent = False
-
-            # Auto-apply candidate
             if config.auto_apply_matched_candidates:
                 application_id = create_application_for_candidate(
                     candidate_id, job_ad_id, config
                 )
-
-            # Send WhatsApp notification
             if config.send_whatsapp_notifications:
                 candidate_phone = candidate.get("mobile", "")
                 if candidate_phone:
                     whatsapp_sent = send_whatsapp_notification(
                         candidate_id, job_ad_id, candidate_phone
                     )
-
-            # Record match
             CandidateSkillMatch.objects.create(
                 candidate_id=candidate_id,
                 job_ad_id=job_ad_id,
@@ -766,8 +698,6 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
             )
         else:
             print("  ✗ No match")
-
-    # Update job cache
     job_cache.total_candidates_matched = matched_count
     job_cache.last_matched_at = django_timezone.now()
     job_cache.save()
@@ -779,15 +709,10 @@ def process_single_job_for_skill_matching(job_ad_id: int, organization_id: int):
 
 @shared_task
 def scan_and_process_live_jobs_for_all_organizations(organization_ids):
-    """
-    Main task: Scan all live jobs and process new ones
-    """
     print(f"\n{'#' * 80}")
     print("AI Candidate Skill Search - Scanning Live Jobs")
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'#' * 80}\n")
-
-    # Get all active configs
     active_configs = AISkillSearchConfig.objects.filter(
         organization_id__in=organization_ids, is_active=True
     )
@@ -807,8 +732,6 @@ def scan_and_process_live_jobs_for_all_organizations(organization_ids):
                 "Authorization": f"Bearer {access_token}",
                 "Content-Type": "application/json",
             }
-
-            # Fetch live jobs from platform
             jobs_response = requests.get(
                 f"{config.platform.base_url}/jobads",
                 headers=headers,
@@ -830,26 +753,18 @@ def scan_and_process_live_jobs_for_all_organizations(organization_ids):
             live_jobs = jobs_data.get("items", [])
 
             print(f"✓ Found {len(live_jobs)} live jobs for {config.organization.name}")
-
-            # Process each job
             for job in live_jobs:
                 job_ad_id = job.get("adId")
                 job_state = job.get("state")
-
-                # Check if job matches the status for skill search
                 if job_state != config.jobad_status_for_skill_search:
                     continue
-
-                # Check if already processed
                 if JobSkillCache.objects.filter(
                     job_ad_id=job_ad_id, is_processed=True
                 ).exists():
                     continue
-
-                # Process job asynchronously
                 process_single_job_for_skill_matching(job_ad_id, config.organization_id)
                 total_processed += 1
-                time.sleep(1)  # Rate limiting
+                time.sleep(1)
 
         except Exception as e:
             print(
@@ -862,9 +777,6 @@ def scan_and_process_live_jobs_for_all_organizations(organization_ids):
 
 @shared_task
 def initiate_ai_skill_search():
-    """
-    Periodic task to be run every 3 hours
-    """
     subscribed_organization_ids = Subscription.objects.filter(
         available_limit__gt=0,
     ).values_list("organization_id", flat=True)

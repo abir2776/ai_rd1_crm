@@ -6,76 +6,52 @@ from organizations.models import Organization, OrganizationPlatform
 
 
 class AISkillSearchConfig(models.Model):
-    """Configuration for AI-powered candidate skill search"""
-
     organization = models.OneToOneField(
         Organization, on_delete=models.CASCADE, related_name="ai_skill_search_config"
     )
     platform = models.ForeignKey(OrganizationPlatform, on_delete=models.CASCADE)
-
-    # Search radius in kilometers
     search_radius_km = models.IntegerField(
         default=20,
         validators=[MinValueValidator(1), MaxValueValidator(500)],
         help_text="Radius in kilometers to search for candidates from job location",
     )
-
-    # Candidate status IDs to filter
     candidate_status_ids = models.JSONField(
         default=list,
         help_text="List of candidate status IDs to include in search (e.g., active, inactive, archived)",
     )
-
-    # Job ad statuses to process
     jobad_status_for_skill_search = models.CharField(
         max_length=50, default="Live", help_text="Job ad status to trigger skill search"
     )
-
-    # Minimum skill match percentage
     minimum_skill_match_percentage = models.IntegerField(
         default=50,
         validators=[MinValueValidator(0), MaxValueValidator(100)],
         help_text="Minimum percentage of skills that must match",
     )
-
-    # Consider employment history
     consider_employment_history = models.BooleanField(
         default=True,
         help_text="Whether to consider employment history in skill matching",
     )
-
-    # Process CV if no skills found
     process_cv_for_skills = models.BooleanField(
         default=True,
         help_text="Extract skills from CV using AI if candidate has no skills listed",
     )
-
-    # Maximum candidates to return per job
     max_candidates_per_job = models.IntegerField(
         default=50,
         validators=[MinValueValidator(1), MaxValueValidator(500)],
         help_text="Maximum number of candidates to return per job",
     )
-
-    # Auto-apply candidates to jobs
     auto_apply_matched_candidates = models.BooleanField(
         default=True,
         help_text="Automatically create applications for matched candidates",
     )
-
-    # Application status for auto-applied candidates
     auto_apply_status_name = models.CharField(
         max_length=100,
         default="AI Available Candidate",
         help_text="Status name to set for auto-applied candidates",
     )
-
-    # Send WhatsApp notifications
     send_whatsapp_notifications = models.BooleanField(
         default=True, help_text="Send WhatsApp messages to matched candidates"
     )
-
-    # Enable/disable the feature
     is_active = models.BooleanField(
         default=True,
         help_text="Enable or disable AI skill search for this organization",
@@ -94,8 +70,6 @@ class AISkillSearchConfig(models.Model):
 
 
 class JobSkillCache(models.Model):
-    """Cache for AI-extracted job skills to avoid re-processing"""
-
     job_ad_id = models.IntegerField(unique=True, db_index=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="job_skill_caches"
@@ -104,23 +78,15 @@ class JobSkillCache(models.Model):
     job_title = models.CharField(max_length=255)
     job_location = models.CharField(max_length=255)
     job_location_city = models.CharField(max_length=100)
-
-    # AI-extracted required skills
     required_skills = models.JSONField(
         default=list, help_text="List of skills extracted by AI from job description"
     )
-
-    # Nearby cities within radius
     nearby_cities = models.JSONField(
         default=list, help_text="List of cities within search radius"
     )
-
-    # Job description used for extraction
     job_description = models.JSONField(
         default=dict, help_text="Job description data used for skill extraction"
     )
-
-    # Processing metadata
     processed_at = models.DateTimeField(auto_now_add=True)
     last_matched_at = models.DateTimeField(null=True, blank=True)
     total_candidates_matched = models.IntegerField(default=0)
@@ -138,15 +104,11 @@ class JobSkillCache(models.Model):
 
 
 class CandidateSkillMatch(models.Model):
-    """Track candidate-job matches for analytics and notifications"""
-
     candidate_id = models.IntegerField(db_index=True)
     job_ad_id = models.IntegerField(db_index=True)
     organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, related_name="candidate_skill_matches"
     )
-
-    # Match details
     matched_skills = models.JSONField(
         default=list, help_text="Skills that matched between candidate and job"
     )
@@ -162,8 +124,6 @@ class CandidateSkillMatch(models.Model):
         ],
         help_text="Source of the skill match",
     )
-
-    # Actions taken
     application_created = models.BooleanField(default=False)
     application_id = models.IntegerField(null=True, blank=True)
     whatsapp_sent = models.BooleanField(default=False)
