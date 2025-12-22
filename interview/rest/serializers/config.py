@@ -1,6 +1,3 @@
-import requests
-from django.conf import settings
-from django.core.files.base import ContentFile
 from django.db import transaction
 from rest_framework import serializers
 
@@ -9,16 +6,11 @@ from interview.models import (
     PrimaryQuestion,
     QuestionConfigConnection,
 )
+from interview.rest.serializers.common import PrimaryQuestionSerializer
 from organizations.models import OrganizationPlatform, Platform
 from organizations.rest.serializers.organization_platform import MyPlatformSerializer
 from phone_number.models import TwilioPhoneNumber
 from phone_number.rest.serializers.phone_numbers import PhoneNumberSerializer
-
-
-class PrimaryQuestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PrimaryQuestion
-        fields = "__all__"
 
 
 class AIPhoneCallConfigSerializer(serializers.ModelSerializer):

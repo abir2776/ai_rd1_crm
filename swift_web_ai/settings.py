@@ -50,6 +50,9 @@ CREATED_APPS = [
     "interview",
     "phone_number",
     "cv_formatter",
+    "ai_gdpr",
+    "awr_compliance",
+    "ai_skill_search",
 ]
 THIRD_PARTY_APPS = [
     "versatileimagefield",
@@ -128,8 +131,8 @@ SIMPLE_JWT = {
 }
 
 # Celery Configuration Options
-CELERY_BROKER_URL = "redis://redis:6379/0"
-CELERY_RESULT_BACKEND = "redis://redis:6379/0"
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 
 # Optional settings
 CELERY_ACCEPT_CONTENT = ["json"]

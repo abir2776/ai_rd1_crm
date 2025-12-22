@@ -5,16 +5,7 @@ from common.models import BaseModelWithUID
 from organizations.models import Organization, OrganizationPlatform
 from phone_number.models import TwilioPhoneNumber
 
-
-class InterviewType(BaseModelWithUID):
-    name = models.CharField(max_length=255)
-    description = models.TextField(blank=True, null=True)
-    status = models.CharField(
-        max_length=50, choices=Status.choices, default=Status.ACTIVE
-    )
-
-    def __str__(self):
-        return self.name
+from .choices import InterviewType, ProgressStatus
 
 
 class InterviewTaken(BaseModelWithUID):
@@ -30,6 +21,16 @@ class InterviewTaken(BaseModelWithUID):
     call_duration = models.CharField(max_length=100, null=True, blank=True)
     call_status = models.CharField(max_length=100, null=True, blank=True)
     disconnection_reason = models.CharField(max_length=100, null=True, blank=True)
+    type = models.CharField(
+        max_length=20,
+        choices=InterviewType.choices,
+        default=InterviewType.AI_CALL,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ProgressStatus.choices,
+        default=ProgressStatus.COMPLETED,
+    )
 
     def __str__(self):
         return (
@@ -37,7 +38,7 @@ class InterviewTaken(BaseModelWithUID):
         )
 
 
-class InterviewConversation(BaseModelWithUID):
+class InterviewCallConversation(BaseModelWithUID):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     interview = models.ForeignKey(InterviewTaken, on_delete=models.CASCADE)
     call_sid = models.CharField(max_length=100, unique=True)
@@ -53,8 +54,6 @@ class InterviewConversation(BaseModelWithUID):
 
     started_at = models.DateTimeField()
     ended_at = models.DateTimeField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = "interview_conversations"
@@ -78,7 +77,6 @@ class AIPhoneCallConfig(BaseModelWithUID):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     platform = models.ForeignKey(OrganizationPlatform, on_delete=models.CASCADE)
     phone = models.ForeignKey(TwilioPhoneNumber, on_delete=models.CASCADE)
-    voice_id = models.CharField(default="SQ1QAX1hsTZ1d6O0dCWA")
     end_call_if_primary_answer_negative = models.BooleanField(default=False)
     application_status_for_calling = models.PositiveIntegerField()
     jobad_status_for_calling = models.CharField(max_length=255)
@@ -86,6 +84,9 @@ class AIPhoneCallConfig(BaseModelWithUID):
     status_for_unsuccessful_call = models.PositiveIntegerField()
     status_for_successful_call = models.PositiveIntegerField()
     status_when_call_is_placed = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ("organization", "platform")
 
     def __str__(self):
         return f"{self.organization.name}-{self.platform.platform.name}"
@@ -101,5 +102,72 @@ class QuestionConfigConnection(BaseModelWithUID):
     question = models.ForeignKey(PrimaryQuestion, on_delete=models.CASCADE)
     config = models.ForeignKey(AIPhoneCallConfig, on_delete=models.CASCADE)
 
+    class Meta:
+        unique_together = ("question", "config")
+
     def __str__(self):
         return f"{self.question.question}-{self.config.organization}"
+
+
+class AIMessageConfig(BaseModelWithUID):
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    platform = models.ForeignKey(OrganizationPlatform, on_delete=models.CASCADE)
+    phone = models.ForeignKey(TwilioPhoneNumber, on_delete=models.CASCADE)
+    application_status_for_sms = models.PositiveIntegerField()
+    jobad_status_for_sms = models.CharField(max_length=255, default="Current")
+    sms_time_after_status_update = models.IntegerField()
+    status_for_unsuccessful_sms = models.PositiveIntegerField()
+    status_for_successful_sms = models.PositiveIntegerField()
+    status_when_sms_is_send = models.PositiveIntegerField(default=0)
+    twilio_sid = models.CharField(null=True, blank=True)
+    twilio_auth_token = models.CharField(null=True, blank=True)
+    whatsapp_template_sid = models.CharField(null=True, blank=True)
+    type = models.CharField(
+        max_length=20,
+        choices=InterviewType.choices,
+        default=InterviewType.AI_SMS,
+    )
+
+    class Meta:
+        unique_together = ("organization", "platform", "phone")
+
+    def __str__(self):
+        return f"{self.organization.name}-{self.platform.platform.name}"
+
+
+class QuestionMessageConfigConnection(BaseModelWithUID):
+    question = models.ForeignKey(PrimaryQuestion, on_delete=models.CASCADE)
+    config = models.ForeignKey(AIMessageConfig, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("question", "config")
+
+    def __str__(self):
+        return f"{self.question.question}-{self.config.organization}"
+
+
+class InterviewMessageConversation(BaseModelWithUID):
+    candidate_phone = models.CharField(max_length=255)
+    organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    application_id = models.PositiveIntegerField()
+    candidate_id = models.PositiveIntegerField()
+    jobad_id = models.PositiveIntegerField()
+    ai_instruction = models.TextField()
+    conversation_json = models.JSONField(
+        help_text="Conversation messages in JSON format"
+    )
+    message_count = models.IntegerField(default=0)
+    type = type = models.CharField(
+        max_length=20,
+        choices=InterviewType.choices,
+        default=InterviewType.AI_SMS,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ProgressStatus.choices,
+        default=ProgressStatus.INITIATED,
+    )
+    ai_dicision = models.CharField(max_length=100, null=True, blank=True)
+
+    def __str__(self):
+        return f"Conversation {self.application_id} - {self.candidate_id}"
