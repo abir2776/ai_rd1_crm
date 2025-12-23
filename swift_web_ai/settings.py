@@ -53,6 +53,7 @@ CREATED_APPS = [
     "ai_gdpr",
     "awr_compliance",
     "ai_skill_search",
+    "ai_lead_generation",
 ]
 THIRD_PARTY_APPS = [
     "versatileimagefield",
