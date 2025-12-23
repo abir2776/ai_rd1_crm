@@ -753,7 +753,6 @@ def run_ai_lead_generation_for_organization(organization_id: int):
         print(f"[{idx}/{len(candidates)}]")
         process_candidate_for_lead_generation(candidate, config)
         time.sleep(2)
-        break
 
     print(f"\n{'=' * 80}")
     print(f"✓ Completed: org {organization_id}")
