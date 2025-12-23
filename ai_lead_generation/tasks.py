@@ -24,9 +24,8 @@ MODEL = "gpt-4o"
 os.makedirs(TEMP_RESUME_FOLDER, exist_ok=True)
 
 
-def return_lead_schema():
-    """JSON schema for lead extraction"""
-    return {
+def return_Schema():
+    SCHEMA: Dict[str, Any] = {
         "type": "object",
         "additionalProperties": False,
         "properties": {
@@ -37,7 +36,9 @@ def return_lead_schema():
                     "additionalProperties": False,
                     "properties": {
                         "Company name": {"type": "string"},
-                        "Industry / Sector": {"type": "string"},
+                        "Industry / Sector": {
+                            "type": "string"
+                        },  # e.g., Construction, Logistics
                         "Company address": {
                             "type": "object",
                             "additionalProperties": False,
@@ -46,8 +47,12 @@ def return_lead_schema():
                                 "city": {"type": "string"},
                                 "state": {"type": "string"},
                                 "postalCode": {"type": "string"},
-                                "countryCode": {"type": "string"},
-                                "name": {"type": "string"},
+                                "countryCode": {
+                                    "type": "string"
+                                },  # 2-letter if available, else country name or "null"
+                                "name": {
+                                    "type": "string"
+                                },  # "city, Country" when possible
                             },
                             "required": [
                                 "street",
@@ -68,7 +73,9 @@ def return_lead_schema():
                         "LinkedIn profile URL (company or contact)": {"type": "string"},
                         "Twitter profile URL (company or contact)": {"type": "string"},
                         "Contact person name (First Last)": {"type": "string"},
-                        "Contact person position": {"type": "string"},
+                        "Contact person position": {
+                            "type": "string"
+                        },  # Hiring manager / HR / MD / Ops Manager
                         "Contact phone (international format)": {"type": "string"},
                         "Contact email (work email preferred)": {"type": "string"},
                         "Is related company (Logistics, Haulage, School, Transport & Recruitment)": {
@@ -106,29 +113,71 @@ def return_lead_schema():
                     "required": ["person_name", "phone_or_mobile", "company_name"],
                 },
             },
+            "required": ["companies", "Contacts in CV"],
         },
-        "required": ["companies", "Contacts in CV"],
     }
+    return SCHEMA
 
 
 def get_lead_instructions():
     """System and user instructions for lead extraction"""
     SYSTEM = (
-        "You are an information extraction engine. Extract company and contact details from CV text.\n"
-        "- List every company the candidate worked with (past and present)\n"
-        "- Merge multiple roles at same company into one entry\n"
-        "- Extract ONLY explicit information; do NOT invent data\n"
-        '- Return "null" string for missing fields (not JSON null)\n'
-        "- For 'Is related company': Return 'Yes' if Logistics/Haulage/School/Transport/Recruitment, else 'No', or 'null' if uncertain\n"
-        "- For 'Contacts in CV': Extract contacts mentioned (excluding CV owner)\n"
-        "- Return ONLY raw JSON (no markdown fences)"
+        "You are an information extraction engine. Your task is to read a CV text data, get the company list the CV owner has mentioned, check whole online about the company to get necessary data.\n"
+        "Task: From the given CV/resume text, list every company the candidate has worked with (past and present).\n"
+        "- Merge multiple roles at the same company into a single company entry.\n"
+        "- Only extract information explicitly present in the provided text; do NOT invent phone numbers, emails, or web facts.\n"
+        '- For any field that is missing or cannot be determined, return the literal string "null" (not a JSON null).\n'
+        "- For 'Industry / Sector', use a concise sector like Construction, Logistics, Manufacturing, etc.; if unclear, 'null'.\n"
+        "- For 'Company address', output an object with: street, city, state, postalCode, countryCode, name. If any subfield is missing, set it to \"null\". "
+        'countryCode should be a 2-letter code if clearly stated; otherwise use country name or "null". '
+        "name should be 'city, Country' when both available; otherwise the best available or \"null\".\n"
+        "- For 'Company Phone number (international format)', prefer the primary company phone number; if not present, 'null'.\n"
+        "- For 'Company Mobile number (international format)', prefer a main mobile number if available; else 'null'.\n"
+        "- For 'Company website (canonical URL)', prefer the primary company homepage; if not present, 'null'.\n"
+        "- 'LinkedIn profile URL (company or contact)': prefer company page; if only a named contact LinkedIn is present, use that; else 'null'.\n"
+        "- 'Twitter profile URL (company or contact)': prefer company page; if only a named contact Twitter is present, use that; else 'null'.\n"
+        "- 'Contact person name', 'position', 'phone', 'email': only emit if present; otherwise 'null'.\n"
+        "- For 'Is related company (Logistics, Haulage, School, Transport & Recruitment)', return 'Yes' if the company is related to Logistics, Haulage, School, Transport or Recruitment related. Else return 'No'. Otherwise if you can't scrap, return 'null'\n"
+        "- For 'Contacts in CV', you will find all the contacts which are mentioned in the CV text. Output a list of objects of person_name, phone_or_mobile, company_name. Here company_name field represents in which company(company name) the contact name found. It's okay if no company found for the contact, just return name and contact number. But remember, do not import the CV owner's contact information, since this data is only for the purpose of extracting company client information. If any subfield is missing, set it to \"null\" \n"
+        "- Return ONLY raw JSON (no markdown fences, no extra prose) with this structure:\n"
+        "{\n"
+        '  "companies": [\n'
+        "    {\n"
+        '      "Company name": "null",\n'
+        '      "Industry / Sector": "null",\n'
+        '      "Company address": {"street":"null","city":"null","state":"null","postalCode":"null","countryCode":"null","name":"null"},\n'
+        '      "Company Phone number (international format)": "null",\n'
+        '      "Company Mobile number (international format)": "null",\n'
+        '      "Company website (canonical URL)": "null",\n'
+        '      "LinkedIn profile URL (company or contact)": "null",\n'
+        '      "Twitter profile URL (company or contact)": "null",\n'
+        '      "Contact person name (First Last)": "null",\n'
+        '      "Contact person position": "null",\n'
+        '      "Contact phone (international format)": "null",\n'
+        '      "Contact email (work email preferred)": "null",\n'
+        '      "Is related company (Logistics, Haulage, School, Transport & Recruitment)": "null",\n'
+        '      "For any field not present, output the literal string "null".\n'
+        '      "Return ONLY raw JSON matching the specified structure (no markdown, no extra text).\n\n'
+        "    }\n"
+        "  ],\n"
+        '  "Contacts in CV": [\n'
+        "    {\n"
+        '      "person_name": "null",\n'
+        '      "phone_or_mobile": "null",\n'
+        '      "company_name": "null"\n'
+        '      "Return ONLY raw JSON matching the specified structure (no markdown, no extra text).\n\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
     )
 
     USER = (
-        "Extract company and contact details.\n"
-        'For missing fields, output "null".\n'
-        "Return ONLY raw JSON.\n\n"
-        "CV TEXT START\n{cv_text}\nCV TEXT END\n"
+        "Extract the company and managerial/contact details from online based on the company details.\n"
+        'For any field not present, output the literal string "null".\n'
+        "Return ONLY raw JSON matching the specified structure (no markdown, no extra text).\n\n"
+        "CV TEXT START\n"
+        "{cv_text}\n"
+        "CV TEXT END\n"
     )
 
     return SYSTEM, USER
@@ -224,7 +273,7 @@ def extract_text_from_pdf(file_path: str) -> str:
 
 def extract_companies_and_contacts_from_resume(resume_text: str) -> dict:
     try:
-        SCHEMA = return_lead_schema()
+        SCHEMA = return_Schema()
         SYSTEM, USER = get_lead_instructions()
 
         client = OpenAI(api_key=OPENAI_API_KEY)
