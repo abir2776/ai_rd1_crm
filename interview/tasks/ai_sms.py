@@ -221,7 +221,11 @@ def initiate_sms_interview(
             candidate_phone=to_number,
             jobad_id=job_ad_id,
             type="AI_SMS",
-            status__in=[ProgressStatus.INITIATED, ProgressStatus.IN_PROGRESS],
+            status__in=[
+                ProgressStatus.INITIATED,
+                ProgressStatus.IN_PROGRESS,
+                ProgressStatus.COMPLETED,
+            ],
         )
         if running_interview.exists():
             print("Already initiated an interview for this position.")
