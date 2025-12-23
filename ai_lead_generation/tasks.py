@@ -660,7 +660,8 @@ def run_ai_lead_generation_for_organization(organization_id: int):
 
         process_candidate_for_lead_generation(candidate, config)
         total_processed += 1
-        break
+        if total_processed >= 10:
+            break
 
         # Rate limiting between candidates
         time.sleep(2)
