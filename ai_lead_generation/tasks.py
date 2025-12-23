@@ -7,13 +7,13 @@ from typing import Any, Dict
 
 import requests
 from celery import shared_task
-from django.utils import timezone as django_timezone
 from dotenv import load_dotenv
 from jsonschema import Draft202012Validator
 from openai import OpenAI
 
-from .models import LeadGenerationConfig
 from subscription.models import Subscription
+
+from .models import LeadGenerationConfig
 
 load_dotenv()
 
@@ -321,14 +321,18 @@ def fetch_all_attachments(candidate_id: int, config: LeadGenerationConfig) -> st
         attachments_url = (
             f"{config.platform.base_url}/candidates/{candidate_id}/attachments"
         )
-
-        response = requests.get(attachments_url, headers=headers, timeout=30)
+        params = {"Type": "Resume"}
+        response = requests.get(
+            attachments_url, headers=headers, params=params, timeout=30
+        )
 
         if response.status_code == 401:
             access_token = config.platform.refresh_access_token()
             if access_token:
                 headers["Authorization"] = f"Bearer {access_token}"
-                response = requests.get(attachments_url, headers=headers, timeout=30)
+                response = requests.get(
+                    attachments_url, headers=headers, params=params, timeout=30
+                )
 
         if response.status_code not in [200, 201]:
             print(f"  ✗ Failed to fetch attachments: {response.status_code}")
@@ -336,7 +340,7 @@ def fetch_all_attachments(candidate_id: int, config: LeadGenerationConfig) -> st
 
         attachments = response.json().get("items", [])
         if not attachments:
-            print(f"  ⚠ No attachments found")
+            print("  ⚠ No attachments found")
             return ""
 
         print(f"  ✓ Found {len(attachments)} attachment(s)")
@@ -422,7 +426,7 @@ def fetch_all_attachments(candidate_id: int, config: LeadGenerationConfig) -> st
             print(f"  ✓ Total extracted text: {len(combined_text)} characters")
             return combined_text
         else:
-            print(f"  ⚠ No text extracted from any attachments")
+            print("  ⚠ No text extracted from any attachments")
             return ""
 
     except Exception as e:
@@ -564,7 +568,7 @@ def create_company_address(
                 )
 
         if response.status_code in [200, 201]:
-            print(f"      ✓ Created address")
+            print("      ✓ Created address")
     except Exception as e:
         print(f"      ✗ Error creating address: {str(e)}")
 
@@ -682,7 +686,7 @@ def process_candidate_for_lead_generation(
         resume_text = fetch_all_attachments(candidate_id, config)
 
         if not resume_text:
-            print(f"  ⚠ No resume content")
+            print("  ⚠ No resume content")
             return
 
         extracted_data = extract_companies_and_contacts_from_resume(resume_text)
@@ -693,7 +697,7 @@ def process_candidate_for_lead_generation(
         print("Contacts: ", contacts_in_cv)
 
         if not companies and not contacts_in_cv:
-            print(f"  ⚠ No data extracted")
+            print("  ⚠ No data extracted")
             return
 
         company_id_map = {}
@@ -702,19 +706,19 @@ def process_candidate_for_lead_generation(
             company_name = company.get("Company name", "").strip()
 
             if not company_name or company_name == "null":
-                print(f"    ❌ Missing company name, skipping")
+                print("    ❌ Missing company name, skipping")
                 continue
 
             is_related = company.get(
                 "Is related company (Logistics, Haulage, School, Transport & Recruitment)"
             )
             if is_related == "Yes":
-                print(f"    ❌ Related company (Logistics/Haulage/etc), skipping")
+                print("    ❌ Related company (Logistics/Haulage/etc), skipping")
                 continue
 
             address_name = company.get("Company address", {}).get("name")
             if not address_name or address_name == "null":
-                print(f"    ❌ Missing company address, skipping")
+                print("    ❌ Missing company address, skipping")
                 continue
 
             exists, existing_id = check_company_exists(company_name, config)
