@@ -309,8 +309,8 @@ def extract_companies_and_contacts_from_resume(resume_text: str) -> dict:
         return {"companies": [], "Contacts in CV": []}
 
 
-def fetch_formatted_resume(candidate_id: int, config: LeadGenerationConfig) -> str:
-    temp_file_path = None
+def fetch_all_attachments(candidate_id: int, config: LeadGenerationConfig) -> str:
+    """Fetch all PDF attachments for a candidate and extract text from them"""
     try:
         access_token = config.platform.access_token
         headers = {
@@ -321,73 +321,112 @@ def fetch_formatted_resume(candidate_id: int, config: LeadGenerationConfig) -> s
         attachments_url = (
             f"{config.platform.base_url}/candidates/{candidate_id}/attachments"
         )
-        params = {"Type": "FormattedResume"}
 
-        response = requests.get(
-            attachments_url, headers=headers, params=params, timeout=30
-        )
+        response = requests.get(attachments_url, headers=headers, timeout=30)
 
         if response.status_code == 401:
             access_token = config.platform.refresh_access_token()
             if access_token:
                 headers["Authorization"] = f"Bearer {access_token}"
-                response = requests.get(
-                    attachments_url, headers=headers, params=params, timeout=30
-                )
+                response = requests.get(attachments_url, headers=headers, timeout=30)
 
         if response.status_code not in [200, 201]:
+            print(f"  ✗ Failed to fetch attachments: {response.status_code}")
             return ""
 
         attachments = response.json().get("items", [])
         if not attachments:
+            print(f"  ⚠ No attachments found")
             return ""
 
-        first_resume = attachments[0]
-        attachment_id = first_resume.get("attachmentId")
-        resume_url = first_resume.get("url") or first_resume.get("links", {}).get(
-            "self"
-        )
+        print(f"  ✓ Found {len(attachments)} attachment(s)")
 
-        if not resume_url:
-            return ""
+        all_text = []
 
-        temp_file_path = f"{TEMP_RESUME_FOLDER}/lead_{candidate_id}_{attachment_id}.pdf"
+        for idx, attachment in enumerate(attachments, 1):
+            temp_file_path = None
+            try:
+                attachment_id = attachment.get("attachmentId")
+                attachment_name = attachment.get("fileName", f"attachment_{idx}")
+                resume_url = attachment.get("url") or attachment.get("links", {}).get(
+                    "self"
+                )
 
-        resume_response = requests.get(
-            resume_url, headers={"Authorization": f"Bearer {access_token}"}, timeout=30
-        )
+                if not resume_url:
+                    print(f"    ⚠ No URL for attachment {idx}")
+                    continue
 
-        if resume_response.status_code == 401:
-            access_token = config.platform.refresh_access_token()
-            if access_token:
+                # Check if it's a PDF file
+                file_extension = (
+                    attachment_name.lower().split(".")[-1]
+                    if "." in attachment_name
+                    else ""
+                )
+                if file_extension != "pdf":
+                    print(f"    ⚠ Skipping non-PDF file: {attachment_name}")
+                    continue
+
+                print(f"    Processing [{idx}/{len(attachments)}]: {attachment_name}")
+
+                temp_file_path = (
+                    f"{TEMP_RESUME_FOLDER}/lead_{candidate_id}_{attachment_id}.pdf"
+                )
+
                 resume_response = requests.get(
                     resume_url,
                     headers={"Authorization": f"Bearer {access_token}"},
                     timeout=30,
                 )
 
-        if resume_response.status_code != 200:
+                if resume_response.status_code == 401:
+                    access_token = config.platform.refresh_access_token()
+                    if access_token:
+                        resume_response = requests.get(
+                            resume_url,
+                            headers={"Authorization": f"Bearer {access_token}"},
+                            timeout=30,
+                        )
+
+                if resume_response.status_code != 200:
+                    print(f"    ✗ Failed to download: {resume_response.status_code}")
+                    continue
+
+                with open(temp_file_path, "wb") as f:
+                    f.write(resume_response.content)
+
+                attachment_text = extract_text_from_pdf(temp_file_path)
+
+                if attachment_text.strip():
+                    all_text.append(
+                        f"\n--- Content from {attachment_name} ---\n{attachment_text}"
+                    )
+                    print(f"    ✓ Extracted text ({len(attachment_text)} chars)")
+                else:
+                    print(f"    ⚠ No text extracted from {attachment_name}")
+
+                # Delete file immediately after extraction
+                if temp_file_path and os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
+
+            except Exception as e:
+                print(f"    ✗ Error processing attachment {idx}: {str(e)}")
+                if temp_file_path and os.path.exists(temp_file_path):
+                    try:
+                        os.remove(temp_file_path)
+                    except:
+                        pass
+
+        combined_text = "\n\n".join(all_text)
+
+        if combined_text.strip():
+            print(f"  ✓ Total extracted text: {len(combined_text)} characters")
+            return combined_text
+        else:
+            print(f"  ⚠ No text extracted from any attachments")
             return ""
 
-        with open(temp_file_path, "wb") as f:
-            f.write(resume_response.content)
-
-        resume_text = extract_text_from_pdf(temp_file_path)
-
-        # Delete CV immediately after extraction
-        if temp_file_path and os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
-            print(f"  ✓ Deleted CV file")
-
-        return resume_text
-
     except Exception as e:
-        print(f"  ✗ Error fetching resume: {str(e)}")
-        if temp_file_path and os.path.exists(temp_file_path):
-            try:
-                os.remove(temp_file_path)
-            except:
-                pass
+        print(f"  ✗ Error fetching attachments: {str(e)}")
         return ""
 
 
@@ -639,7 +678,8 @@ def process_candidate_for_lead_generation(
     print(f"\n  [{candidate_id}] Processing: {candidate_name}")
 
     try:
-        resume_text = fetch_formatted_resume(candidate_id, config)
+        # Updated: Now fetches ALL attachments instead of just formatted resume
+        resume_text = fetch_all_attachments(candidate_id, config)
 
         if not resume_text:
             print(f"  ⚠ No resume content")
@@ -658,58 +698,60 @@ def process_candidate_for_lead_generation(
 
         company_id_map = {}
 
-        # for company in companies:
-        #     company_name = company.get("Company name", "").strip()
+        for company in companies:
+            company_name = company.get("Company name", "").strip()
 
-        #     if not company_name or company_name == "null":
-        #         print(f"    ❌ Missing company name, skipping")
-        #         continue
+            if not company_name or company_name == "null":
+                print(f"    ❌ Missing company name, skipping")
+                continue
 
-        #     is_related = company.get("Is related company (Logistics, Haulage, School, Transport & Recruitment)")
-        #     if is_related == "Yes":
-        #         print(f"    ❌ Related company (Logistics/Haulage/etc), skipping")
-        #         continue
+            is_related = company.get(
+                "Is related company (Logistics, Haulage, School, Transport & Recruitment)"
+            )
+            if is_related == "Yes":
+                print(f"    ❌ Related company (Logistics/Haulage/etc), skipping")
+                continue
 
-        #     address_name = company.get("Company address", {}).get("name")
-        #     if not address_name or address_name == "null":
-        #         print(f"    ❌ Missing company address, skipping")
-        #         continue
+            address_name = company.get("Company address", {}).get("name")
+            if not address_name or address_name == "null":
+                print(f"    ❌ Missing company address, skipping")
+                continue
 
-        #     exists, existing_id = check_company_exists(company_name, config)
-        #     if exists:
-        #         print(f"    ⚠ Company exists (ID: {existing_id}), skipping")
-        #         continue
+            exists, existing_id = check_company_exists(company_name, config)
+            if exists:
+                print(f"    ⚠ Company exists (ID: {existing_id}), skipping")
+                continue
 
-        #     print(f"\n    Creating: {company_name}")
+            print(f"\n    Creating: {company_name}")
 
-        #     company_id = create_company_in_jobadder(company, config)
+            company_id = create_company_in_jobadder(company, config)
 
-        #     if company_id:
-        #         company_id_map[company_name] = company_id
-        #         create_company_address(company_id, company, config)
-        #         create_contact_in_jobadder(company, company_id, config)
-        #         time.sleep(0.5)
+            if company_id:
+                company_id_map[company_name] = company_id
+                create_company_address(company_id, company, config)
+                create_contact_in_jobadder(company, company_id, config)
+                time.sleep(0.5)
 
-        # for contact in contacts_in_cv:
-        #     person_name = contact.get("person_name", "").strip()
-        #     phone = contact.get("phone_or_mobile", "").strip()
-        #     company_name = contact.get("company_name", "").strip()
+        for contact in contacts_in_cv:
+            person_name = contact.get("person_name", "").strip()
+            phone = contact.get("phone_or_mobile", "").strip()
+            company_name = contact.get("company_name", "").strip()
 
-        #     if not person_name or person_name == "null" or not phone or phone == "null":
-        #         continue
+            if not person_name or person_name == "null" or not phone or phone == "null":
+                continue
 
-        #     print(f"\n      Creating additional contact: {person_name}")
+            print(f"\n      Creating additional contact: {person_name}")
 
-        #     company_id = None
-        #     if company_name and company_name != "null":
-        #         company_id = company_id_map.get(company_name)
-        #         if not company_id:
-        #             exists, existing_id = check_company_exists(company_name, config)
-        #             if exists:
-        #                 company_id = existing_id
+            company_id = None
+            if company_name and company_name != "null":
+                company_id = company_id_map.get(company_name)
+                if not company_id:
+                    exists, existing_id = check_company_exists(company_name, config)
+                    if exists:
+                        company_id = existing_id
 
-        #     create_additional_contact(contact, company_id, config)
-        #     time.sleep(0.5)
+            create_additional_contact(contact, company_id, config)
+            time.sleep(0.5)
 
         print(f"\n  ✓ Completed: {candidate_id}")
 
