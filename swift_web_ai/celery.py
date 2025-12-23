@@ -38,10 +38,10 @@ app.conf.beat_schedule = {
     #     "task": "cv_formatter.tasks.initiate_all_cv_formatting",
     #     "schedule": crontab(minute="*/3"),
     # },
-    # "run-initiate-all-sms-interview-every-3-min": {
-    #     "task": "interview.tasks.ai_sms.initiate_all_sms_interviews",
-    #     "schedule": crontab(minute="*/3"),
-    # },
+    "run-initiate-all-sms-interview-every-3-min": {
+        "task": "interview.tasks.ai_sms.initiate_all_sms_interviews",
+        "schedule": crontab(minute="*/5"),
+    },
     # "initiate-whatsapp-interviews": {
     #     "task": "interview.tasks.ai_whatsapp.initiate_all_whatsapp_interviews",
     #     "schedule": crontab(minute="*/3"),
@@ -50,8 +50,8 @@ app.conf.beat_schedule = {
     #     "task": "ai_skill_search.tasks.initiate_ai_skill_search",
     #     "schedule": crontab(minute="*/5"),
     # },
-    "run-initiate-all-client-lead-generation": {
-        "task": "ai_lead_generation.tasks.initiate_ai_lead_generation_for_all_organizations",
-        "schedule": crontab(minute="*/5"),
-    }
+    # "run-initiate-all-client-lead-generation": {
+    #     "task": "ai_lead_generation.tasks.initiate_ai_lead_generation_for_all_organizations",
+    #     "schedule": crontab(minute="*/5"),
+    # }
 }
