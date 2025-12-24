@@ -81,7 +81,7 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
         }
 
         response = requests.get(
-            f"{base_url}placements",
+            f"{base_url}/placements",
             headers=headers,
             params=params,
             timeout=30,
@@ -91,7 +91,7 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
             if access_token:
                 headers["Authorization"] = f"Bearer {access_token}"
                 response = requests.get(
-                    f"{base_url}placements",
+                    f"{base_url}/placements",
                     headers=headers,
                     params=params,
                     timeout=30,
@@ -106,7 +106,7 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
                 continue
             try:
                 detail_response = requests.get(
-                    f"{base_url}placements/{placement_id}",
+                    f"{base_url}/placements/{placement_id}",
                     headers=headers,
                     timeout=30,
                 )
@@ -116,7 +116,7 @@ def fetch_placements_from_platform(config: AWRConfig) -> List[Dict]:
                     if access_token:
                         headers["Authorization"] = f"Bearer {access_token}"
                         detail_response = requests.get(
-                            f"{base_url}v2/placements/{placement_id}",
+                            f"{base_url}/placements/{placement_id}",
                             headers=headers,
                             timeout=30,
                         )

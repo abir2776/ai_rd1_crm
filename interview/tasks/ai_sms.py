@@ -383,7 +383,7 @@ def update_application_status_after_sms(
             return
 
         # Update via platform API
-        platform_api_url = f"{config.platform.base_url}applications/{application_id}"
+        platform_api_url = f"{config.platform.base_url}/applications/{application_id}"
         access_token = config.platform.access_token
 
         headers = {

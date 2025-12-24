@@ -179,7 +179,7 @@ def update_application_status_after_call(organization_id: int, application_id: i
             )
             return
 
-        jobadder_api_url = f"{config.platform.base_url}applications/{application_id}"
+        jobadder_api_url = f"{config.platform.base_url}/applications/{application_id}"
 
         access_token = config.platform.access_token
         headers = {

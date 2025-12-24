@@ -25,7 +25,11 @@ class Feature(BaseModelWithUID):
         return self.name
 
 
-class SubscriptionPlan(BaseModelWithUID):
+class PlanFeature(BaseModelWithUID):
+    feature = models.ForeignKey(
+        Feature, on_delete=models.CASCADE, related_name="feature_plans"
+    )
+    limit = models.IntegerField(null=True, blank=True)
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -36,23 +40,7 @@ class SubscriptionPlan(BaseModelWithUID):
     )
 
     def __str__(self):
-        return self.name
-
-
-class PlanFeature(BaseModelWithUID):
-    plan = models.ForeignKey(
-        SubscriptionPlan, on_delete=models.CASCADE, related_name="plan_features"
-    )
-    feature = models.ForeignKey(
-        Feature, on_delete=models.CASCADE, related_name="feature_plans"
-    )
-    limit = models.IntegerField(null=True, blank=True)
-
-    class Meta:
-        unique_together = ("plan", "feature")
-
-    def __str__(self):
-        return f"{self.plan.name} - {self.feature.name}"
+        return f"{self.name} - {self.feature.name}"
 
 
 class Subscription(BaseModelWithUID):
