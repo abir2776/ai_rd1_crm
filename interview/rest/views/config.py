@@ -40,6 +40,6 @@ class AIPhoneCallConfigDetailView(generics.RetrieveUpdateDestroyAPIView):
         serializer.save()
 
 
-class PrimaryQuestionListView(generics.ListAPIView):
+class PrimaryQuestionListView(generics.ListCreateAPIView):
     serializer_class = PrimaryQuestionSerializer
     queryset = PrimaryQuestion.objects.filter()
