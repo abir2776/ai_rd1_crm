@@ -27,7 +27,7 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
     def get_interview_data(self, _object):
         data = InterviewCallConversation.objects.filter(interview_id=_object.id).first()
         if data:
-            return InterviewTakenSerializer(data).data
+            return InterviewCallConversationSerializer(data).data
         return {}
 
     def create(self, validated_data):
