@@ -1,17 +1,34 @@
 import requests
 from rest_framework import serializers
-from django.conf import settings
-from interview.models import InterviewTaken, AIPhoneCallConfig
+
+from interview.models import (
+    AIPhoneCallConfig,
+    InterviewCallConversation,
+    InterviewTaken,
+)
 from organizations.models import Organization
+
+
+class InterviewCallConversationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewCallConversation
+        fields = "__all__"
 
 
 class InterviewTakenSerializer(serializers.ModelSerializer):
     organization_id = serializers.IntegerField(write_only=True, required=False)
+    interview_data = serializers.SerializerMethodField()
 
     class Meta:
         model = InterviewTaken
         fields = "__all__"
         read_only_fields = ["organization"]
+
+    def get_interview_data(self, _object):
+        data = InterviewCallConversation.objects.filter(interview_id=_object.id).first()
+        if data:
+            return InterviewTakenSerializer(data).data
+        return {}
 
     def create(self, validated_data):
         organization_id = validated_data.pop("organization_id")

@@ -44,6 +44,9 @@ class InterviewCallConversation(BaseModelWithUID):
     call_sid = models.CharField(max_length=100, unique=True)
     application_id = models.PositiveIntegerField()
     candidate_id = models.PositiveIntegerField()
+    candidate_name = models.CharField(max_length=100, null=True, blank=True)
+    candidate_email = models.CharField(max_length=100, null=True, blank=True)
+    candidate_phone = models.CharField(max_length=100, null=True, blank=True)
     job_id = models.PositiveIntegerField()
 
     conversation_text = models.TextField(help_text="Full conversation in text format")
