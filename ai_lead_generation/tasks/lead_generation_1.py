@@ -13,7 +13,7 @@ from openai import OpenAI
 
 from subscription.models import Subscription
 
-from .models import LeadGenerationConfig
+from ai_lead_generation.models import LeadGenerationConfig
 
 load_dotenv()
 
