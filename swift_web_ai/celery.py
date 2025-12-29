@@ -30,10 +30,10 @@ app.conf.beat_schedule = {
     #     "task": "ai_gdpr.tasks.initiate_all_gdpr_emails",
     #     "schedule": crontab(minute="*/3"),
     # },
-    "run-initiate-all-interview-every-5-min": {
-        "task": "interview.tasks.ai_phone.initiate_all_interview",
-        "schedule": crontab(minute="*/5"),
-    },
+    # "run-initiate-all-interview-every-5-min": {
+    #     "task": "interview.tasks.ai_phone.initiate_all_interview",
+    #     "schedule": crontab(minute="*/5"),
+    # },
     # "format-cvs-every-3-minutes": {
     #     "task": "cv_formatter.tasks.initiate_all_cv_formatting",
     #     "schedule": crontab(minute="*/3"),
@@ -54,4 +54,8 @@ app.conf.beat_schedule = {
     #     "task": "ai_lead_generation.tasks.initiate_ai_lead_generation_for_all_organizations",
     #     "schedule": crontab(minute="*/5"),
     # }
+    "run-initiate-all-client-lead-generation-part-2": {
+        "task": "ai_lead_generation.tasks.lead_generation_2.initiate_marketing_automation_for_all_organizations",
+        "schedule": crontab(minute="*/5"),
+    }
 }
