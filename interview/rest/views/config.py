@@ -1,6 +1,7 @@
 # interview/views/aiphonecallconfig.py
 from django.db import transaction
-from rest_framework import generics
+from rest_framework import generics, status
+from rest_framework.response import Response
 
 from interview.models import AIPhoneCallConfig, PrimaryQuestion
 from interview.rest.serializers.config import (
@@ -29,7 +30,13 @@ class AIPhoneCallConfigDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_object(self):
         organization = self.request.user.get_organization()
-        return AIPhoneCallConfig.objects.filter(organization=organization).first()
+        config = AIPhoneCallConfig.objects.filter(organization=organization).first()
+        if not config:
+            return Response(
+                data={"details": "No call config found for your organization"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return config
 
     @transaction.atomic
     def perform_update(self, serializer):
