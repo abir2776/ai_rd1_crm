@@ -39,7 +39,7 @@ class MarketingAutomationConfig(models.Model):
         help_text="If True, skip companies identified as recruitment agencies",
     )
 
-    opportunity_stage = models.IntegerField(
+    opportunity_stage = models.CharField(
         null=True,
         blank=True,
         help_text="Stage ID to assign to created opportunities (optional)",
