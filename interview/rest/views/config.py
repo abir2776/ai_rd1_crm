@@ -26,14 +26,10 @@ class AIPhoneCallConfigListCreateView(generics.ListCreateAPIView):
 
 class AIPhoneCallConfigDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AIPhoneCallConfigSerializer
-    lookup_field = "uid"
 
-    def get_queryset(self):
-        user = self.request.user
-        organization = user.get_organization()
-        return AIPhoneCallConfig.objects.filter(
-            organization=organization
-        ).select_related("platform")
+    def get_object(self):
+        organization = self.request.user.get_organization()
+        return AIPhoneCallConfig.objects.filter(organization=organization).first()
 
     @transaction.atomic
     def perform_update(self, serializer):

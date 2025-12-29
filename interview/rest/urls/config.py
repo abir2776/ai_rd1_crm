@@ -14,7 +14,7 @@ urlpatterns = [
         name="aiphonecallconfig-list-create",
     ),
     path(
-        "<uuid:uid>",
+        "details",
         AIPhoneCallConfigDetailView.as_view(),
         name="aiphonecallconfig-detail",
     ),
