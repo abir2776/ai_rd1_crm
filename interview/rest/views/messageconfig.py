@@ -1,5 +1,6 @@
 from django.db import transaction
 from rest_framework import generics
+from rest_framework.exceptions import NotFound
 
 from interview.models import AIMessageConfig
 from interview.rest.serializers.messageconfig import (
@@ -24,14 +25,13 @@ class AIMessageConfigListCreateView(generics.ListCreateAPIView):
 
 class AIMessageConfigDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = AIPMessageConfigSerializer
-    lookup_field = "uid"
 
-    def get_queryset(self):
-        user = self.request.user
-        organization = user.get_organization()
-        return AIMessageConfig.objects.filter(organization=organization).select_related(
-            "platform"
-        )
+    def get_object(self):
+        organization = self.request.user.get_organization()
+        config = AIMessageConfig.objects.filter(organization=organization).first()
+        if not config:
+            raise NotFound("No message config found for your organization")
+        return config
 
     @transaction.atomic
     def perform_update(self, serializer):

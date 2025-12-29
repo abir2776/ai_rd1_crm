@@ -8,6 +8,7 @@ from interview.rest.serializers.config import (
     AIPhoneCallConfigSerializer,
     PrimaryQuestionSerializer,
 )
+from common.choices import Status
 
 
 class AIPhoneCallConfigListCreateView(generics.ListCreateAPIView):
@@ -42,4 +43,4 @@ class AIPhoneCallConfigDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class PrimaryQuestionListView(generics.ListCreateAPIView):
     serializer_class = PrimaryQuestionSerializer
-    queryset = PrimaryQuestion.objects.filter()
+    queryset = PrimaryQuestion.objects.filter(status=Status.ACTIVE)

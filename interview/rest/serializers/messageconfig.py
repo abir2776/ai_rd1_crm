@@ -98,7 +98,7 @@ class AIPMessageConfigSerializer(serializers.ModelSerializer):
         primary_question_uids = validated_data.pop("primary_question_inputs", None)
 
         if platform_uid:
-            platform = Platform.objects.filter(uid=platform_uid).first()
+            platform = OrganizationPlatform.objects.filter(uid=platform_uid).first()
             if not platform:
                 raise serializers.ValidationError(
                     {"platform_uid": "Invalid platform UID"}

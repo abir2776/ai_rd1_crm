@@ -12,7 +12,7 @@ urlpatterns = [
         name="aimessageconfig-list-create",
     ),
     path(
-        "<uuid:uid>",
+        "details",
         AIMessageConfigDetailView.as_view(),
         name="aimessageconfig-detail",
     ),

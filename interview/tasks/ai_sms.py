@@ -205,6 +205,7 @@ def initiate_sms_interview(
     organization_id: int,
     application_id: int,
     candidate_id: int,
+    candidate_email: str,
     candidate_name: str,
     job_title: str,
     job_ad_id: int,
@@ -249,6 +250,8 @@ def initiate_sms_interview(
             application_id=application_id,
             candidate_id=candidate_id,
             candidate_phone=to_number,
+            candidate_name=candidate_name,
+            candidate_email=candidate_email,
             jobad_id=job_ad_id,
             ai_instruction=ai_instructions,
             conversation_json=[
@@ -549,6 +552,7 @@ def fetch_sms_candidates(config):
                         candidate = application.get("candidate", {})
                         candidate_id = candidate.get("candidateId")
                         candidate_first_name = candidate.get("firstName", "")
+                        candidate_email = candidate.get("email", "")
                         candidate_phone = candidate.get("mobile", "")
                         updated_at = application.get("updatedAt", "")
                         status = application.get("status")
@@ -581,6 +585,7 @@ def fetch_sms_candidates(config):
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
                                 "candidate_id": candidate_id,
+                                "candidate_email": candidate_email,
                                 "candidate_name": candidate_first_name,
                                 "job_title": job_title,
                                 "job_ad_id": ad_id,

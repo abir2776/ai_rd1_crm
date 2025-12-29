@@ -1,8 +1,12 @@
 from django.http import HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics
 from twilio.twiml.messaging_response import MessagingResponse
 
+from interview.models import InterviewMessageConversation
+from interview.rest.serializers.message import MessageInterviewReportSerializer
 from interview.tasks.ai_sms import process_candidate_sms_response
 from interview.tasks.ai_whatsapp import process_candidate_whatsapp_response
 
@@ -62,3 +66,13 @@ def twilio_whatsapp_webhook(request):
         print(f"Error in Twilio WhatsApp webhook: {str(e)}")
         response = MessagingResponse()
         return HttpResponse(str(response), content_type="text/xml")
+
+
+class MessageInterviewReport(generics.ListAPIView):
+    serializer_class = MessageInterviewReportSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["type"]
+
+    def get_queryset(self):
+        organization = self.request.user.get_organization()
+        return InterviewMessageConversation.objects.filter(organization=organization)

@@ -69,7 +69,7 @@ class InterviewCallConversation(BaseModelWithUID):
 class PrimaryQuestion(BaseModelWithUID):
     question = models.CharField(max_length=255)
     status = models.CharField(
-        max_length=50, choices=Status.choices, default=Status.ACTIVE
+        max_length=50, choices=Status.choices, default=Status.HIDDEN
     )
 
     def __str__(self):
@@ -152,6 +152,8 @@ class QuestionMessageConfigConnection(BaseModelWithUID):
 
 class InterviewMessageConversation(BaseModelWithUID):
     candidate_phone = models.CharField(max_length=255)
+    candidate_name = models.CharField(max_length=255, null=True, blank=True)
+    candidate_email = models.CharField(max_length=255, null=True, blank=True)
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     application_id = models.PositiveIntegerField()
     candidate_id = models.PositiveIntegerField()
