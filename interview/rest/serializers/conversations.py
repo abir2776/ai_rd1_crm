@@ -14,6 +14,9 @@ class ConversationSaveSerializer(serializers.Serializer):
     message_count = serializers.IntegerField()
     started_at = serializers.DateTimeField()
     ended_at = serializers.DateTimeField()
+    candidate_name = serializers.CharField()
+    candidate_email = serializers.CharField()
+    candidate_phone = serializers.CharField()
 
 
 class InterviewCallConversationSerializer(serializers.ModelSerializer):

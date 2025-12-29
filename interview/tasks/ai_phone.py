@@ -98,6 +98,7 @@ def make_interview_call(
     welcome_message_audio_url: str = None,
     welcome_text: str = None,
     voice_id: str = "SQ1QAX1hsTZ1d6O0dCWA",
+    candidate_email: str = None,
 ):
     try:
         payload = {
@@ -116,6 +117,7 @@ def make_interview_call(
             "welcome_message_audio_url": welcome_message_audio_url,
             "welcome_text": welcome_text,
             "voice_id": voice_id,
+            "candidate_email": candidate_email,
         }
 
         response = requests.post(
@@ -318,6 +320,7 @@ def fetch_platform_candidates(config):
                         candidate_id = candidate.get("candidateId")
                         candidate_first_name = candidate.get("firstName", "")
                         candidate_last_name = candidate.get("lastName", "")
+                        candidate_email = candidate.get("email", "")
                         candidate_phone = candidate.get("mobile", "")
                         updated_at = application.get("updatedAt", "")
                         status = application.get("status")
@@ -336,7 +339,8 @@ def fetch_platform_candidates(config):
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
                                 "candidate_id": candidate_id,
-                                "candidate_name": candidate_first_name,
+                                "candidate_name": f"{candidate_first_name} {candidate_last_name}",
+                                "candidate_email": candidate_email,
                                 "job_title": job_title,
                                 "job_ad_id": ad_id,
                                 "job_details": job_details,
@@ -410,6 +414,7 @@ def bulk_interview_calls(organization_id: int = None):
                 candidate.get("welcome_message_audio_url"),
                 candidate.get("welcome_text"),
                 candidate.get("voice_id"),
+                candidate.get("candidate_email"),
             ],
             countdown=countdown,
         )
