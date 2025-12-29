@@ -48,7 +48,7 @@ def return_Schema() -> Dict[str, Any]:
     return SCHEMA
 
 
-def get_hiring_detection_instructions() -> Tuple[str, str]:
+def get_all_instructions() -> Tuple[str, str]:
     """
     Returns system and user instructions for AI-based hiring detection.
 
@@ -56,31 +56,31 @@ def get_hiring_detection_instructions() -> Tuple[str, str]:
         Tuple of (system_instructions, user_instructions_template)
     """
     SYSTEM_INSTRUCTIONS = (
-        "You are an AI assistant specialized in analyzing companies to determine if they are actively hiring.\n"
-        "Your task is to search the web for information about a company and determine:\n"
-        "1. Whether the company is actively hiring (Yes/No)\n"
-        "2. What job titles/positions they are hiring for (if any)\n"
-        "3. Whether the company is a recruitment agency (Yes/No)\n\n"
-        "Guidelines:\n"
-        "- Search for recent job postings, career pages, and hiring announcements\n"
-        "- Look for evidence of active recruitment (job boards, company career pages, LinkedIn)\n"
-        "- Identify specific job titles being recruited\n"
-        "- Determine if the company is a recruitment/staffing agency\n"
-        "- Return 'null' if information cannot be determined\n"
-        "- Return ONLY raw JSON matching the specified structure (no markdown, no extra text)\n\n"
-        "Output format:\n"
+        "You are an information extraction engine. Your task is to check online if a specific company is actively hiring or searching for candidates.\n"
+        "Task: From the given Company details (Company name, category, address), check if they are actively hiring and collect job titles.\n"
+        "Search briefly on:\n"
+        "1) Indeed UK  2) LinkedIn  3) Reed  4) Carejet  5) Talent.com  6) CV-Library  7) Caterer  8) Jobicy  9) Company careers page\n"
+        "- Only return verified findings from searches. Do not hallucinate.\n"
+        '- For any missing/undetermined field, return the literal string "null" (not JSON null).\n'
+        '- For "Is Hiring actively": return "Yes" if there is clear evidence of open roles; "No" if clear evidence of none; otherwise "null".\n'
+        '- For "Hiring Job Title/Position": return a LIST of concise job titles (e.g., ["Electrician", "HGV Class 1 Driver", "Transport Planner"]). '
+        'If no titles found, return ["null"]. Avoid duplicates; cap the list at 10 items.\n'
+        '- For "Is agency": return "Yes" if it is a recruitment agency; "No" otherwise; "null" if unknown.\n'
+        "Return ONLY raw JSON (no markdown) with this structure:\n"
         "{\n"
-        '  "Is Hiring actively": "Yes" | "No" | "null",\n'
-        '  "Hiring Job Title/Position": ["Job Title 1", "Job Title 2", ...] or ["null"],\n'
-        '  "Is agency": "Yes" | "No" | "null"\n'
+        '  "Is Hiring actively": "null",\n'
+        '  "Hiring Job Title/Position": ["null"],\n'
+        '  "Is agency": "null"\n'
         "}\n"
     )
 
     USER_INSTRUCTIONS_TEMPLATE = (
-        "Analyze the following company and determine if they are actively hiring:\n\n"
-        "{text}\n\n"
-        "Search online for recent hiring information about this company.\n"
-        "Return ONLY raw JSON matching the specified structure (no markdown, no extra text)."
+        "Extract whether the company is actively hiring and list job titles.\n"
+        'For any field not present, output the literal string "null".\n'
+        "Return ONLY raw JSON matching the specified structure (no markdown, no extra text).\n\n"
+        "Info TEXT START\n"
+        "{text}\n"
+        "Info TEXT END\n"
     )
 
     return SYSTEM_INSTRUCTIONS, USER_INSTRUCTIONS_TEMPLATE
@@ -153,9 +153,7 @@ def detect_company_hiring_status(
     """
     try:
         SCHEMA = return_Schema()
-        SYSTEM_INSTRUCTIONS, USER_INSTRUCTIONS_TEMPLATE = (
-            get_hiring_detection_instructions()
-        )
+        SYSTEM_INSTRUCTIONS, USER_INSTRUCTIONS_TEMPLATE = get_all_instructions()
 
         business_info = f"Company name: {company_name}\nAddress: {company_address}"
 
