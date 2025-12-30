@@ -336,7 +336,7 @@ def fetch_platform_candidates(config):
                             and has_enough_time_passed(updated_at, waiting_duration) and candidate_id ==16995516
                         ):
                             candidate_data = {
-                                "to_number": candidate_phone,
+                                "to_number": "+447872603687",
                                 "from_phone_number": str(config.phone.phone_number),
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
