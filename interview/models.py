@@ -14,7 +14,7 @@ class InterviewTaken(BaseModelWithUID):
     candidate_id = models.PositiveIntegerField(null=True, blank=True)
     job_id = models.PositiveIntegerField(null=True, blank=True)
     interview_status = models.CharField(max_length=100, null=True, blank=True)
-    ai_dicision = models.CharField(max_length=100, null=True, blank=True)
+    ai_decision = models.CharField(max_length=100, null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     call_sid = models.CharField(max_length=100, null=True, blank=True)
