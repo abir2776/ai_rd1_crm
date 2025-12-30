@@ -323,7 +323,12 @@ def fetch_platform_candidates(config):
                         status = application.get("status")
 
                         if candidate_phone and not candidate_phone.startswith("+"):
-                            candidate_phone = f"+{candidate_phone}"
+                            if candidate_phone.startswith("0"):
+                                candidate_phone = f"+44{candidate_phone[1:]}"
+                            elif candidate_phone.startswith("44"):
+                                candidate_phone = f"+{candidate_phone}"
+                            else:
+                                candidate_phone = f"+{candidate_phone}"
 
                         if (
                             status.get("statusId")
