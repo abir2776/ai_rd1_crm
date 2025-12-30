@@ -8,7 +8,7 @@ from celery import shared_task
 from django.core.files.base import ContentFile
 from dotenv import load_dotenv
 
-from interview.models import AIPhoneCallConfig
+from interview.models import AIPhoneCallConfig, InterviewTaken
 from organizations.models import Organization
 from subscription.models import Subscription
 
@@ -389,28 +389,33 @@ def bulk_interview_calls(organization_id: int = None):
 
     for i, candidate in enumerate(candidates):
         countdown = i * 120
-
-        make_interview_call.apply_async(
-            args=[
-                candidate["to_number"],
-                candidate["from_phone_number"],
-                candidate["organization_id"],
-                candidate["application_id"],
-                candidate.get("interview_type", "general"),
-                candidate.get("candidate_name"),
-                candidate.get("candidate_id"),
-                candidate.get("job_title"),
-                candidate.get("job_ad_id"),
-                candidate.get("job_details"),
-                candidate.get("primary_questions"),
-                candidate.get("should_end_if_primary_question_failed"),
-                candidate.get("welcome_message_audio_url"),
-                candidate.get("welcome_text"),
-                candidate.get("voice_id"),
-                candidate.get("candidate_email"),
-            ],
-            countdown=countdown,
-        )
+        is_taken = InterviewTaken.objects.filter(
+            organization_id=organization_id,
+            candidate_id=candidate.get("candidate_id"),
+            application_id=candidate["application_id"],
+        ).exists()
+        if not is_taken:
+            make_interview_call.apply_async(
+                args=[
+                    candidate["to_number"],
+                    candidate["from_phone_number"],
+                    candidate["organization_id"],
+                    candidate["application_id"],
+                    candidate.get("interview_type", "general"),
+                    candidate.get("candidate_name"),
+                    candidate.get("candidate_id"),
+                    candidate.get("job_title"),
+                    candidate.get("job_ad_id"),
+                    candidate.get("job_details"),
+                    candidate.get("primary_questions"),
+                    candidate.get("should_end_if_primary_question_failed"),
+                    candidate.get("welcome_message_audio_url"),
+                    candidate.get("welcome_text"),
+                    candidate.get("voice_id"),
+                    candidate.get("candidate_email"),
+                ],
+                countdown=countdown,
+            )
 
 
 @shared_task
