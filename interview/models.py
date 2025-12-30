@@ -136,7 +136,7 @@ class AIMessageConfig(BaseModelWithUID):
     )
 
     class Meta:
-        unique_together = ("organization", "platform", "phone")
+        unique_together = ("organization", "platform", "phone", "type")
 
     def __str__(self):
         return f"{self.organization.name}-{self.platform.platform.name}"
