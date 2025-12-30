@@ -73,7 +73,9 @@ class AIPMessageConfigSerializer(serializers.ModelSerializer):
                 {"primary_question_inputs": "Some question UIDs are invalid."}
             )
 
-        config = AIMessageConfig.objects.filter(organization=organization)
+        config = AIMessageConfig.objects.filter(
+            organization=organization, type=validated_data["type"]
+        )
         if config.exists():
             raise serializers.ValidationError(
                 {"details": "Message configuration already exists."}

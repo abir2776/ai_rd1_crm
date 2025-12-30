@@ -1,6 +1,6 @@
 from django.db import transaction
 from rest_framework import generics
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 
 from interview.models import AIMessageConfig
 from interview.rest.serializers.messageconfig import (
@@ -28,9 +28,18 @@ class AIMessageConfigDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_object(self):
         organization = self.request.user.get_organization()
-        config = AIMessageConfig.objects.filter(organization=organization).first()
+
+        config_type = self.request.query_params.get("type")
+        if not config_type:
+            raise ValidationError({"type": "type query parameter is required"})
+
+        config = AIMessageConfig.objects.filter(
+            organization=organization, type=config_type
+        ).first()
+
         if not config:
-            raise NotFound("No message config found for your organization")
+            raise NotFound("No message config found for this type")
+
         return config
 
     @transaction.atomic
