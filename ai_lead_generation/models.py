@@ -8,6 +8,9 @@ from organizations.models import Organization, OrganizationPlatform
 class LeadGenerationConfig(BaseModelWithUID):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
     platform = models.ForeignKey(OrganizationPlatform, on_delete=models.CASCADE)
+    find_contacts_without_company = models.BooleanField(default=True)
+    is_company_address_required = models.BooleanField(default=True)
+    is_contacts_item_required = models.BooleanField(default=True)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):

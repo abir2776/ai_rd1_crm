@@ -14,7 +14,7 @@ class Feature(BaseModelWithUID):
     name = models.CharField(max_length=100, unique=True)
     code = models.SlugField(max_length=50, unique=True)
     description = models.TextField(blank=True)
-    type = models.CharField(max_length=20, choices=FeatureType.choices)
+    type = models.CharField(max_length=50, choices=FeatureType.choices)
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
@@ -30,7 +30,7 @@ class PlanFeature(BaseModelWithUID):
         Feature, on_delete=models.CASCADE, related_name="feature_plans"
     )
     limit = models.IntegerField(null=True, blank=True)
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     status = models.CharField(
@@ -38,6 +38,9 @@ class PlanFeature(BaseModelWithUID):
         choices=Status.choices,
         default=Status.ACTIVE,
     )
+
+    class Meta:
+        unique_together = ["feature", "name"]
 
     def __str__(self):
         return f"{self.name} - {self.feature.name}"

@@ -5,7 +5,7 @@ from organizations.models import OrganizationPlatform
 
 
 class GDPREmailConfigSerializer(serializers.ModelSerializer):
-    platform_uid = serializers.CharField(write_only=True)
+    platform_uid = serializers.CharField(write_only=True, required=False)
 
     class Meta:
         model = GDPREmailConfig
@@ -16,9 +16,29 @@ class GDPREmailConfigSerializer(serializers.ModelSerializer):
         platform_uid = validated_data.pop("platform_uid")
         user = self.context["request"].user
         organization = user.get_organization()
+
         platform = OrganizationPlatform.objects.filter(uid=platform_uid).first()
         if not platform:
-            raise serializers.ValidationError("Invalid platform uid")
+            raise serializers.ValidationError({"platform_uid": "Invalid platform uid"})
+
         return GDPREmailConfig.objects.create(
             organization=organization, platform=platform, **validated_data
         )
+
+    def update(self, instance, validated_data):
+        platform_uid = validated_data.pop("platform_uid", None)
+
+        if platform_uid:
+            platform = OrganizationPlatform.objects.filter(uid=platform_uid).first()
+            if not platform:
+                raise serializers.ValidationError(
+                    {"platform_uid": "Invalid platform uid"}
+                )
+            instance.platform = platform
+
+        # update remaining fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.save()
+        return instance
