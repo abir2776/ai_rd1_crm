@@ -46,13 +46,18 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"details": "No config found for this organization."}
             )
+
         status = validated_data.get("ai_decision")
         application_id = validated_data.get("application_id")
         interview = InterviewTaken.objects.create(
             organization=organization, **validated_data
         )
+
         if application_id:
-            jobadder_api_url = f"{config.platform.base_url}/{application_id}"
+            jobadder_api_url = (
+                f"{config.platform.base_url}/applications/{application_id}"
+            )
+
             if status == "successful":
                 status_id = config.status_for_successful_call
             elif status == "unsuccessful":
@@ -61,8 +66,9 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
                 status_id = None
 
             if status_id:
+                access_token = config.platform.access_token
                 headers = {
-                    "Authorization": f"Bearer {config.platform.access_token}",
+                    "Authorization": f"Bearer {access_token}",
                     "Content-Type": "application/json",
                 }
                 payload = {"statusId": status_id}
@@ -71,7 +77,24 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
                     response = requests.put(
                         jobadder_api_url, json=payload, headers=headers, timeout=10
                     )
+
+                    if response.status_code == 401:
+                        print("Access token expired, refreshing...")
+                        access_token = config.platform.refresh_access_token()
+                        if not access_token:
+                            raise serializers.ValidationError(
+                                {"jobadder_api": "Could not refresh access token"}
+                            )
+                        headers["Authorization"] = f"Bearer {access_token}"
+                        response = requests.put(
+                            jobadder_api_url, json=payload, headers=headers, timeout=10
+                        )
+
                     response.raise_for_status()
+                    print(
+                        f"Successfully updated application {application_id} status to {status_id}"
+                    )
+
                 except requests.RequestException as e:
                     raise serializers.ValidationError(
                         {"jobadder_api": f"Failed to update JobAdder status: {str(e)}"}
