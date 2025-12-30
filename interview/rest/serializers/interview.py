@@ -60,21 +60,21 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
             else:
                 status_id = None
 
-            if status_id:
-                headers = {
-                    "Authorization": f"Bearer {config.platform.access_token}",
-                    "Content-Type": "application/json",
-                }
-                payload = {"statusId": status_id}
+            # if status_id:
+            #     headers = {
+            #         "Authorization": f"Bearer {config.platform.access_token}",
+            #         "Content-Type": "application/json",
+            #     }
+            #     payload = {"statusId": status_id}
 
-                try:
-                    response = requests.put(
-                        jobadder_api_url, json=payload, headers=headers, timeout=10
-                    )
-                    response.raise_for_status()
-                except requests.RequestException as e:
-                    raise serializers.ValidationError(
-                        {"jobadder_api": f"Failed to update JobAdder status: {str(e)}"}
-                    )
+            #     try:
+            #         response = requests.put(
+            #             jobadder_api_url, json=payload, headers=headers, timeout=10
+            #         )
+            #         response.raise_for_status()
+            #     except requests.RequestException as e:
+            #         raise serializers.ValidationError(
+            #             {"jobadder_api": f"Failed to update JobAdder status: {str(e)}"}
+            #         )
 
         return interview
