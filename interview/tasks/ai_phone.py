@@ -333,7 +333,7 @@ def fetch_platform_candidates(config):
                         if (
                             status.get("statusId")
                             == config.application_status_for_calling
-                            and has_enough_time_passed(updated_at, waiting_duration)
+                            and has_enough_time_passed(updated_at, waiting_duration) and candidate_id ==16995516
                         ):
                             candidate_data = {
                                 "to_number": candidate_phone,
