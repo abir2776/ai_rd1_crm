@@ -1,3 +1,6 @@
 from django.urls import include, path
 
-urlpatterns = [path("config", include("cv_formatter.rest.urls.config"))]
+urlpatterns = [
+    path("config/", include("cv_formatter.rest.urls.config")),
+    path("reports/", include("cv_formatter.rest.urls.reports")),
+]
