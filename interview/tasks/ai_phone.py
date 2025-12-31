@@ -337,7 +337,7 @@ def fetch_platform_candidates(config):
                             and candidate_id == 16995516
                         ):
                             candidate_data = {
-                                "to_number": "+8801815553036",
+                                "to_number": candidate_phone,
                                 "from_phone_number": str(config.phone.phone_number),
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
