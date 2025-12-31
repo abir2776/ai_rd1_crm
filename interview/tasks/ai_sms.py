@@ -121,6 +121,7 @@ IMPORTANT:
     return instructions
 
 
+@shared_task
 def send_sms_message(
     to_number: str, from_number: str, message: str, organization_id: int
 ) -> bool:

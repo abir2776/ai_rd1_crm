@@ -170,10 +170,14 @@ def fetch_job_details(job_self_url: str, config):
         }
 
 
-def update_application_status_after_call(organization_id: int, application_id: int):
+@shared_task
+def update_application_status_after_call(
+    organization_id: int, application_id: int, status_id=None
+):
     try:
         config = AIPhoneCallConfig.objects.get(organization_id=organization_id)
-        status_id = getattr(config, "status_when_call_is_placed", None)
+        if not status_id:
+            status_id = getattr(config, "status_when_call_is_placed", None)
 
         if not status_id:
             print(

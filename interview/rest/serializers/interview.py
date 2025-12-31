@@ -1,4 +1,3 @@
-import requests
 from rest_framework import serializers
 
 from interview.models import (
@@ -6,6 +5,8 @@ from interview.models import (
     InterviewCallConversation,
     InterviewTaken,
 )
+from interview.tasks.ai_phone import update_application_status_after_call
+from interview.tasks.ai_sms import send_sms_message
 from organizations.models import Organization
 
 
@@ -54,10 +55,6 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
         )
 
         if application_id:
-            jobadder_api_url = (
-                f"{config.platform.base_url}/applications/{application_id}"
-            )
-
             if status == "successful":
                 status_id = config.status_for_successful_call
             elif status == "unsuccessful":
@@ -66,38 +63,16 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
                 status_id = None
 
             if status_id:
-                access_token = config.platform.access_token
-                headers = {
-                    "Authorization": f"Bearer {access_token}",
-                    "Content-Type": "application/json",
-                }
-                payload = {"statusId": status_id}
-
-                try:
-                    response = requests.put(
-                        jobadder_api_url, json=payload, headers=headers, timeout=10
-                    )
-
-                    if response.status_code == 401:
-                        print("Access token expired, refreshing...")
-                        access_token = config.platform.refresh_access_token()
-                        if not access_token:
-                            raise serializers.ValidationError(
-                                {"jobadder_api": "Could not refresh access token"}
-                            )
-                        headers["Authorization"] = f"Bearer {access_token}"
-                        response = requests.put(
-                            jobadder_api_url, json=payload, headers=headers, timeout=10
-                        )
-
-                    response.raise_for_status()
-                    print(
-                        f"Successfully updated application {application_id} status to {status_id}"
-                    )
-
-                except requests.RequestException as e:
-                    raise serializers.ValidationError(
-                        {"jobadder_api": f"Failed to update JobAdder status: {str(e)}"}
-                    )
+                update_application_status_after_call.delay(
+                    organization_id, application_id, status_id
+                )
+            if status == "successful" and config.sent_document_upload_link:
+                message = f"Please Upload your updated documents in this link: {config.document_upload_link}"
+                send_sms_message.delay(
+                    validated_data["candidate_phone"],
+                    config.phone.phone_number,
+                    message,
+                    organization_id,
+                )
 
         return interview

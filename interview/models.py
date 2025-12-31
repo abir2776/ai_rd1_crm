@@ -91,6 +91,8 @@ class AIPhoneCallConfig(BaseModelWithUID):
     status_for_successful_call = models.PositiveIntegerField()
     status_when_call_is_placed = models.PositiveIntegerField(default=0)
     voice_id = models.CharField(null=True, blank=True)
+    sent_document_upload_link = models.BooleanField(default=False)
+    document_upload_link = models.CharField(null=True, blank=True)
 
     class Meta:
         unique_together = ("organization", "platform")
