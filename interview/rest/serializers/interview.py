@@ -70,7 +70,7 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
                 message = f"Please Upload your updated documents in this link: {config.document_upload_link}"
                 send_sms_message.delay(
                     validated_data["candidate_phone"],
-                    config.phone.phone_number,
+                    str(config.phone.phone_number),
                     message,
                     organization_id,
                 )
