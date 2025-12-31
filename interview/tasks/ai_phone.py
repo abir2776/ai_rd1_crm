@@ -333,10 +333,11 @@ def fetch_platform_candidates(config):
                         if (
                             status.get("statusId")
                             == config.application_status_for_calling
-                            and has_enough_time_passed(updated_at, waiting_duration) and candidate_id ==16995516
+                            and has_enough_time_passed(updated_at, waiting_duration)
+                            and candidate_id == 16995516
                         ):
                             candidate_data = {
-                                "to_number": "+447872603687",
+                                "to_number": "+8801815553036",
                                 "from_phone_number": str(config.phone.phone_number),
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
