@@ -2,10 +2,12 @@ from rest_framework import serializers
 
 from ai_gdpr.models import GDPREmailConfig
 from organizations.models import OrganizationPlatform
+from organizations.rest.serializers.organization_platform import MyPlatformSerializer
 
 
 class GDPREmailConfigSerializer(serializers.ModelSerializer):
     platform_uid = serializers.CharField(write_only=True, required=False)
+    platform = MyPlatformSerializer(read_only=True)
 
     class Meta:
         model = GDPREmailConfig
