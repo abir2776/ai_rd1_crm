@@ -8,5 +8,5 @@ class GDPRReportListView(ListAPIView):
     serializer_class = GDPRReportSerializer
 
     def get_queryset(self):
-        organization = self.request.user.get_oganization()
+        organization = self.request.user.get_organization()
         return GDPREmailTracker.objects.filter(organization=organization)
