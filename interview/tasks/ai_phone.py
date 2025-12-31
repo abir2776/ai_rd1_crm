@@ -127,7 +127,7 @@ def make_interview_call(
         )
         response.raise_for_status()
         print("Call initiated successfully")
-        # update_application_status_after_call(organization_id, application_id)
+        update_application_status_after_call(organization_id, application_id)
 
     except Exception as exc:
         print(f"Error making call to {to_number}: {str(exc)}")
@@ -338,7 +338,6 @@ def fetch_platform_candidates(config):
                             status.get("statusId")
                             == config.application_status_for_calling
                             and has_enough_time_passed(updated_at, waiting_duration)
-                            and candidate_id == 16995516
                         ):
                             candidate_data = {
                                 "to_number": candidate_phone,
