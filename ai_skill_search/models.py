@@ -20,7 +20,7 @@ class AISkillSearchConfig(models.Model):
         help_text="List of candidate status IDs to include in search (e.g., active, inactive, archived)",
     )
     jobad_status_for_skill_search = models.CharField(
-        max_length=50, default="Live", help_text="Job ad status to trigger skill search"
+        max_length=50, default="Current", help_text="Job ad status to trigger skill search"
     )
     minimum_skill_match_percentage = models.IntegerField(
         default=50,
@@ -28,11 +28,11 @@ class AISkillSearchConfig(models.Model):
         help_text="Minimum percentage of skills that must match",
     )
     consider_employment_history = models.BooleanField(
-        default=True,
+        default=False,
         help_text="Whether to consider employment history in skill matching",
     )
     process_cv_for_skills = models.BooleanField(
-        default=True,
+        default=False,
         help_text="Extract skills from CV using AI if candidate has no skills listed",
     )
     max_candidates_per_job = models.IntegerField(
@@ -41,16 +41,14 @@ class AISkillSearchConfig(models.Model):
         help_text="Maximum number of candidates to return per job",
     )
     auto_apply_matched_candidates = models.BooleanField(
-        default=True,
+        default=False,
         help_text="Automatically create applications for matched candidates",
     )
-    auto_apply_status_name = models.CharField(
-        max_length=100,
-        default="AI Available Candidate",
-        help_text="Status name to set for auto-applied candidates",
+    auto_apply_status = models.IntegerField(
+       null=True,blank=True
     )
     send_whatsapp_notifications = models.BooleanField(
-        default=True, help_text="Send WhatsApp messages to matched candidates"
+        default=False, help_text="Send WhatsApp messages to matched candidates"
     )
     is_active = models.BooleanField(
         default=True,

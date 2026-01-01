@@ -534,7 +534,7 @@ def create_application_for_candidate(
         application_body = {
             "candidateId": candidate_id,
             "jobAdId": job_ad_id,
-            "statusId": config.auto_apply_status_id,
+            "statusId": config.auto_apply_status,
         }
 
         response = requests.post(
