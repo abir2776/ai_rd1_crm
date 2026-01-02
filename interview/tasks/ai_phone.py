@@ -109,7 +109,7 @@ def make_interview_call(
                 candidate_id=candidate_id,
                 application_id=application_id,
             ).exists()
-        if is_taken:
+        if not is_taken:
             payload = {
                 "to_phone_number": to_number,
                 "from_phone_number": from_phone_number,
