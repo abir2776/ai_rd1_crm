@@ -7,4 +7,5 @@ urlpatterns = [
     path("message/config/", include("interview.rest.urls.messageconfig")),
     path("message/", include("interview.rest.urls.message")),
     path("status/", include("interview.rest.urls.status")),
+    path("retry/", include("interview.rest.urls.recall")),
 ]
