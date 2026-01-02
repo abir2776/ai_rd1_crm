@@ -14,7 +14,7 @@ from interview.tasks import make_interview_call
 def retry_disconnected_candidate(request, interview_id):
     try:
         interview = get_object_or_404(
-            InterviewTaken, uid=interview_id, organization=request.user.organization
+            InterviewTaken, uid=interview_id, organization=request.user.get_organization()
         )
         if interview.ai_decision != "user_disconnect":
             return Response(
@@ -88,7 +88,7 @@ def retry_disconnected_candidate(request, interview_id):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def retry_all_disconnected_candidates(request):
-    organization_id = request.user.organization.id
+    organization_id = request.user.get_organization().id
     job_id = request.query_params.get("job_id")
     retry_limit = int(request.query_params.get("limit", 10))
     try:
