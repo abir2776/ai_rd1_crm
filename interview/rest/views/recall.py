@@ -66,6 +66,7 @@ def retry_disconnected_candidate(request, interview_id):
             welcome_text=welcome_text,
             voice_id=config.voice_id,
             candidate_email=interview.candidate_email,
+            is_retry = True
         )
         interview.delete()
 
@@ -156,6 +157,7 @@ def retry_all_disconnected_candidates(request):
                         welcome_text,
                         config.voice_id,
                         interview.candidate_email,
+                        True
                     ],
                     countdown=countdown,
                 )

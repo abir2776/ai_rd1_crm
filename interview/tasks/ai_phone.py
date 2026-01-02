@@ -99,13 +99,16 @@ def make_interview_call(
     welcome_text: str = None,
     voice_id: str = "SQ1QAX1hsTZ1d6O0dCWA",
     candidate_email: str = None,
+    is_retry: bool = False
 ):
     try:
-        is_taken = InterviewTaken.objects.filter(
-            organization_id=organization_id,
-            candidate_id=candidate_id,
-            application_id=application_id,
-        ).exists()
+        is_taken = True
+        if not is_retry:
+            is_taken = InterviewTaken.objects.filter(
+                organization_id=organization_id,
+                candidate_id=candidate_id,
+                application_id=application_id,
+            ).exists()
         if is_taken:
             payload = {
                 "to_phone_number": to_number,
