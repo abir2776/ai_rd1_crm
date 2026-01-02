@@ -101,33 +101,42 @@ def make_interview_call(
     candidate_email: str = None,
 ):
     try:
-        payload = {
-            "to_phone_number": "+8801815553036",
-            "from_phone_number": from_phone_number,
-            "organization_id": organization_id,
-            "application_id": application_id,
-            "candidate_id": candidate_id,
-            "job_title": job_title,
-            "job_id": job_ad_id,
-            "job_details": job_details or {},
-            "candidate_first_name": candidate_name,
-            "interview_type": interview_type,
-            "primary_questions": primary_questions,
-            "should_end_if_primary_question_failed": should_end_if_primary_question_failed,
-            "welcome_message_audio_url": welcome_message_audio_url,
-            "welcome_text": welcome_text,
-            "voice_id": voice_id,
-            "candidate_email": candidate_email,
-        }
+        is_taken = InterviewTaken.objects.filter(
+            organization_id=organization_id,
+            candidate_id=candidate_id,
+            application_id=application_id,
+        ).exists()
+        if is_taken:
+            payload = {
+                "to_phone_number": to_number,
+                "from_phone_number": from_phone_number,
+                "organization_id": organization_id,
+                "application_id": application_id,
+                "candidate_id": candidate_id,
+                "job_title": job_title,
+                "job_id": job_ad_id,
+                "job_details": job_details or {},
+                "candidate_first_name": candidate_name,
+                "interview_type": interview_type,
+                "primary_questions": primary_questions,
+                "should_end_if_primary_question_failed": should_end_if_primary_question_failed,
+                "welcome_message_audio_url": welcome_message_audio_url,
+                "welcome_text": welcome_text,
+                "voice_id": voice_id,
+                "candidate_email": candidate_email,
+            }
 
-        response = requests.post(
-            f"{BASE_API_URL}/initiate-call",
-            json=payload,
-            timeout=30,
-        )
-        response.raise_for_status()
-        print("Call initiated successfully")
-        update_application_status_after_call(organization_id, application_id)
+            response = requests.post(
+                f"{BASE_API_URL}/initiate-call",
+                json=payload,
+                timeout=30,
+            )
+            response.raise_for_status()
+            print("Call initiated successfully")
+            update_application_status_after_call(organization_id, application_id)
+
+        else:
+            print(f"Already called for an interview candidate_id:{candidate_id}, application:{application_id}")
 
     except Exception as exc:
         print(f"Error making call to {to_number}: {str(exc)}")
@@ -398,33 +407,27 @@ def bulk_interview_calls(organization_id: int = None):
 
     for i, candidate in enumerate(candidates):
         countdown = i * 120
-        is_taken = InterviewTaken.objects.filter(
-            organization_id=organization_id,
-            candidate_id=candidate.get("candidate_id"),
-            application_id=candidate["application_id"],
-        ).exists()
-        if not is_taken:
-            make_interview_call.apply_async(
-                args=[
-                    candidate["to_number"],
-                    candidate["from_phone_number"],
-                    candidate["organization_id"],
-                    candidate["application_id"],
-                    candidate.get("interview_type", "general"),
-                    candidate.get("candidate_name"),
-                    candidate.get("candidate_id"),
-                    candidate.get("job_title"),
-                    candidate.get("job_ad_id"),
-                    candidate.get("job_details"),
-                    candidate.get("primary_questions"),
-                    candidate.get("should_end_if_primary_question_failed"),
-                    candidate.get("welcome_message_audio_url"),
-                    candidate.get("welcome_text"),
-                    candidate.get("voice_id"),
-                    candidate.get("candidate_email"),
-                ],
-                countdown=countdown,
-            )
+        make_interview_call.apply_async(
+            args=[
+                candidate["to_number"],
+                candidate["from_phone_number"],
+                candidate["organization_id"],
+                candidate["application_id"],
+                candidate.get("interview_type", "general"),
+                candidate.get("candidate_name"),
+                candidate.get("candidate_id"),
+                candidate.get("job_title"),
+                candidate.get("job_ad_id"),
+                candidate.get("job_details"),
+                candidate.get("primary_questions"),
+                candidate.get("should_end_if_primary_question_failed"),
+                candidate.get("welcome_message_audio_url"),
+                candidate.get("welcome_text"),
+                candidate.get("voice_id"),
+                candidate.get("candidate_email"),
+            ],
+            countdown=countdown,
+        )
 
 
 @shared_task
