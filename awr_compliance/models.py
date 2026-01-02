@@ -22,8 +22,12 @@ class AWRConfig(BaseModelWithUID):
         default="emails/awr_compliance_email.html",
         help_text="Email template to use",
     )
-    email_sender = models.EmailField(help_text="Email address to send from")
-    email_reply_to = models.EmailField(help_text="Email address to receive replies")
+    email_sender = models.EmailField(
+        help_text="Email address to send from", null=True, blank=True
+    )
+    email_reply_to = models.EmailField(
+        help_text="Email address to receive replies", null=True, blank=True
+    )
 
     def __str__(self):
         return f"{self.organization.name} - AWR Config"

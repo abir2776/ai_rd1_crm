@@ -2,10 +2,12 @@ from rest_framework import serializers
 
 from awr_compliance.models import AWRConfig
 from organizations.models import OrganizationPlatform
+from organizations.rest.serializers.organization_platform import MyPlatformSerializer
 
 
 class AWRConfigSerializer(serializers.ModelSerializer):
     platform_uid = serializers.CharField(write_only=True)
+    platform = MyPlatformSerializer(read_only=True)
 
     class Meta:
         model = AWRConfig
