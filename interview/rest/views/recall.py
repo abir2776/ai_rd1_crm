@@ -67,6 +67,7 @@ def retry_disconnected_candidate(request, interview_id):
             voice_id=config.voice_id,
             candidate_email=interview.candidate_email,
         )
+        interview.delete()
 
         return Response(
             {
@@ -158,7 +159,7 @@ def retry_all_disconnected_candidates(request):
                     ],
                     countdown=countdown,
                 )
-
+                interview.delete()
                 retried_count += 1
 
             except Exception as e:
