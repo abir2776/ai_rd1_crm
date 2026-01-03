@@ -35,7 +35,7 @@ def generate_welcome_audio(
     headers = {
         "Accept": "audio/mpeg",
         "Content-Type": "application/json",
-        "xi-api-key": ELEVENLABS_API_KEY,
+        "Authorization": f"Bearer {ELEVENLABS_API_KEY}",
     }
 
     payload = {
