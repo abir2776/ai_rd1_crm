@@ -183,6 +183,7 @@ You're here to engage with contacts who respond to our campaign message.
 - If asked about something you don't know, politely say so
 - Maintain a friendly, professional tone
 - Use emojis sparingly (✅ 👍 are fine)
+- Don't answer any question outside of your given domain.
 
 """
 
