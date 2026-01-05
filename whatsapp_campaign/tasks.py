@@ -32,7 +32,7 @@ def fetch_contacts_from_jobadder(
 
     try:
         if fetch_all:
-            next_url = f"{platform_base_url}/v2/contacts"
+            next_url = f"{platform_base_url}/contacts"
 
             while next_url:
                 print(f"Fetching contacts from: {next_url}")
@@ -69,7 +69,7 @@ def fetch_contacts_from_jobadder(
         else:
             for contact_id in contact_ids:
                 try:
-                    contact_url = f"{platform_base_url}/v2/contacts/{contact_id}"
+                    contact_url = f"{platform_base_url}/contacts/{contact_id}"
                     response = requests.get(contact_url, headers=headers, timeout=30)
 
                     if response.status_code == 401:
