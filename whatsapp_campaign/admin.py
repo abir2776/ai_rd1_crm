@@ -1,3 +1,6 @@
 from django.contrib import admin
 
-# Register your models here.
+from whatsapp_campaign.models import WhatsAppCampaignConfig, WhatsAppCampaignReport
+
+admin.site.register(WhatsAppCampaignConfig)
+admin.site.register(WhatsAppCampaignReport)
