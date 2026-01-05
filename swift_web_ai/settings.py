@@ -54,6 +54,7 @@ CREATED_APPS = [
     "awr_compliance",
     "ai_skill_search",
     "ai_lead_generation",
+    "whatsapp_campaign",
 ]
 THIRD_PARTY_APPS = [
     "versatileimagefield",
