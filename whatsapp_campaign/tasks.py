@@ -23,6 +23,7 @@ def fetch_contacts_from_jobadder(
     access_token: str,
     contact_ids: List[str] = None,
     fetch_all: bool = False,
+    campaign = None
 ) -> List[Dict]:
     contacts = []
     headers = {
@@ -39,8 +40,16 @@ def fetch_contacts_from_jobadder(
                 response = requests.get(next_url, headers=headers, timeout=30)
 
                 if response.status_code == 401:
-                    print("Token expired, need to refresh")
-                    return contacts
+                    print("Token expired, refresing")
+                    access_token = campaign.platform.refresh_access_token()
+                    if not access_token:
+                        print("Error: Could not refresh access token")
+                        return
+
+                    headers["Authorization"] = f"Bearer {access_token}"
+                    response = requests.put(
+                        next_url,  headers=headers, timeout=30
+                    )
 
                 response.raise_for_status()
                 data = response.json()
@@ -73,8 +82,16 @@ def fetch_contacts_from_jobadder(
                     response = requests.get(contact_url, headers=headers, timeout=30)
 
                     if response.status_code == 401:
-                        print(f"Token expired while fetching contact {contact_id}")
-                        continue
+                        print("Token expired, refresing")
+                        access_token = campaign.platform.refresh_access_token()
+                        if not access_token:
+                            print("Error: Could not refresh access token")
+                            return
+
+                        headers["Authorization"] = f"Bearer {access_token}"
+                        response = requests.put(
+                            contact_url,  headers=headers, timeout=30
+                        )
 
                     response.raise_for_status()
                     contact = response.json()
@@ -237,6 +254,7 @@ def process_campaign(campaign_id: int):
                 platform_base_url=campaign.platform.base_url,
                 access_token=access_token,
                 fetch_all=True,
+                campaign = campaign
             )
         else:
             contacts = fetch_contacts_from_jobadder(
@@ -244,6 +262,7 @@ def process_campaign(campaign_id: int):
                 access_token=access_token,
                 contact_ids=campaign.selected_contact_ids,
                 fetch_all=False,
+                campaign= campaign
             )
 
         if not contacts:
