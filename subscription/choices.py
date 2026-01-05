@@ -13,3 +13,4 @@ class FeatureType(models.TextChoices):
     AI_LEAD_GENERATION = "AI_LEAD_GENERATION", "AI Lead Generation"
     AI_DOCUMENT_VERIFY = "AI_DOCUMENT_VERIFY", "AI Document Verify"
     AI_BDM_SALES_ENGINE = "AI_BDM_SALES_ENGINE", "AI BDM Sales Engine"
+    WHATSAPP_CAMPAIGN = "WHATSAPP_CAMPAIGN", "Whats app Campaign"
