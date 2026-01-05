@@ -9,6 +9,7 @@ from interview.models import InterviewMessageConversation
 from interview.rest.serializers.message import MessageInterviewReportSerializer
 from interview.tasks.ai_sms import process_candidate_sms_response
 from interview.tasks.ai_whatsapp import process_candidate_whatsapp_response
+from whatsapp_campaign.tasks import process_campaign_response
 
 
 @csrf_exempt
@@ -56,6 +57,9 @@ def twilio_whatsapp_webhook(request):
         process_candidate_whatsapp_response.delay(
             candidate_phone=normalized_from,
             candidate_message=message_body,
+        )
+        process_campaign_response.delay(
+            contact_phone=normalized_from, contact_message=message_body
         )
 
         print(f"Queued WhatsApp processing for candidate {normalized_from}")
