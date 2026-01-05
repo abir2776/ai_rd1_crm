@@ -2,10 +2,12 @@ from rest_framework import serializers
 
 from ai_skill_search.models import AISkillSearchConfig
 from organizations.models import OrganizationPlatform
+from organizations.rest.serializers.organization_platform import MyPlatformSerializer
 
 
 class SkillSearchConfigSerializer(serializers.ModelSerializer):
     platform_uid = serializers.CharField(write_only=True)
+    platform = MyPlatformSerializer(read_only=True)
 
     class Meta:
         model = AISkillSearchConfig
