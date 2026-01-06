@@ -102,7 +102,7 @@ def make_interview_call(
     is_retry: bool = False
 ):
     try:
-        is_taken = True
+        is_taken = False
         if not is_retry:
             is_taken = InterviewTaken.objects.filter(
                 organization_id=organization_id,
