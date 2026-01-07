@@ -2,9 +2,10 @@ from django.db import models
 from django.utils import timezone
 
 from organizations.models import Organization, OrganizationPlatform
+from common.models import BaseModelWithUID
 
 
-class WhatsAppCampaignConfig(models.Model):
+class WhatsAppCampaignConfig(BaseModelWithUID):
     SCHEDULE_CHOICES = [
         ("now", "Send Now"),
         ("scheduled", "Schedule for Later"),
@@ -81,8 +82,6 @@ class WhatsAppCampaignConfig(models.Model):
     messages_delivered = models.IntegerField(default=0)
     messages_read = models.IntegerField(default=0)
     responses_received = models.IntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
 
@@ -141,7 +140,7 @@ class WhatsAppCampaignConfig(models.Model):
         self.save(update_fields=["responses_received", "updated_at"])
 
 
-class WhatsAppCampaignReport(models.Model):
+class WhatsAppCampaignReport(BaseModelWithUID):
     MESSAGE_STATUS_CHOICES = [
         ("pending", "Pending"),
         ("queued", "Queued"),
@@ -187,8 +186,6 @@ class WhatsAppCampaignReport(models.Model):
         blank=True,
         help_text="Outcome of AI conversation (e.g., 'successful', 'unsuccessful', 'abandoned')",
     )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
     sent_at = models.DateTimeField(null=True, blank=True)
     delivered_at = models.DateTimeField(null=True, blank=True)
     read_at = models.DateTimeField(null=True, blank=True)
