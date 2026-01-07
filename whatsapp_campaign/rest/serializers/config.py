@@ -6,6 +6,7 @@ from whatsapp_campaign.models import WhatsAppCampaignConfig
 
 
 class WhatsAppCampaignConfigSerializer(serializers.ModelSerializer):
+    platform_uid = serializers.CharField(write_only=True)
     platform = MyPlatformSerializer(read_only=True)
 
     class Meta:
