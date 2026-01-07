@@ -23,7 +23,7 @@ def fetch_contacts_from_jobadder(
     access_token: str,
     contact_ids: List[str] = None,
     fetch_all: bool = False,
-    campaign = None
+    campaign=None,
 ) -> List[Dict]:
     contacts = []
     headers = {
@@ -47,9 +47,7 @@ def fetch_contacts_from_jobadder(
                         return
 
                     headers["Authorization"] = f"Bearer {access_token}"
-                    response = requests.put(
-                        next_url,  headers=headers, timeout=30
-                    )
+                    response = requests.put(next_url, headers=headers, timeout=30)
 
                 response.raise_for_status()
                 data = response.json()
@@ -90,19 +88,26 @@ def fetch_contacts_from_jobadder(
 
                         headers["Authorization"] = f"Bearer {access_token}"
                         response = requests.put(
-                            contact_url,  headers=headers, timeout=30
+                            contact_url, headers=headers, timeout=30
                         )
 
                     response.raise_for_status()
                     contact = response.json()
 
                     phone = contact.get("phone")
+                    if phone and not phone.startswith("+"):
+                        if phone.startswith("0"):
+                            phone = f"+44{phone[1:]}"
+                        elif phone.startswith("44"):
+                            phone = f"+{phone}"
+                        else:
+                            phone = f"+{phone}"
                     if phone:
                         contact_data = {
                             "contact_id": contact.get("contactId"),
                             "name": f"{contact.get('firstName', '')} {contact.get('lastName', '')}".strip(),
                             "email": contact.get("email", ""),
-                            "phone": "+8801537468323",
+                            "phone": "+447590-882626",
                             "company": contact.get("company", ""),
                         }
                         contacts.append(contact_data)
@@ -255,7 +260,7 @@ def process_campaign(campaign_id: int):
                 platform_base_url=campaign.platform.base_url,
                 access_token=access_token,
                 fetch_all=True,
-                campaign = campaign
+                campaign=campaign,
             )
         else:
             contacts = fetch_contacts_from_jobadder(
@@ -263,7 +268,7 @@ def process_campaign(campaign_id: int):
                 access_token=access_token,
                 contact_ids=campaign.selected_contact_ids,
                 fetch_all=False,
-                campaign= campaign
+                campaign=campaign,
             )
 
         if not contacts:
