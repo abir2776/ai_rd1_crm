@@ -136,7 +136,7 @@ def make_interview_call(
             )
             response.raise_for_status()
             print("Call initiated successfully")
-            update_application_status_after_call(organization_id, application_id)
+            # update_application_status_after_call(organization_id, application_id)
 
         else:
             print(f"Already called for an interview candidate_id:{candidate_id}, application:{application_id}")
