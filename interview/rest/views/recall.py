@@ -14,9 +14,11 @@ from interview.tasks import make_interview_call
 def retry_disconnected_candidate(request, interview_id):
     try:
         interview = get_object_or_404(
-            InterviewTaken, uid=interview_id, organization=request.user.get_organization()
+            InterviewTaken,
+            uid=interview_id,
+            organization=request.user.get_organization(),
         )
-        if interview.ai_decision != "user_disconnect":
+        if interview.ai_decision in ["user_disconnect", "network_disconnect"]:
             return Response(
                 {
                     "error": "This candidate was not disconnected",
@@ -66,7 +68,7 @@ def retry_disconnected_candidate(request, interview_id):
             welcome_text=welcome_text,
             voice_id=config.voice_id,
             candidate_email=interview.candidate_email,
-            is_retry = True
+            is_retry=True,
         )
 
         return Response(
@@ -101,7 +103,8 @@ def retry_all_disconnected_candidates(request):
                 status=status.HTTP_404_NOT_FOUND,
             )
         disconnected_interviews = InterviewTaken.objects.filter(
-            organization_id=organization_id, ai_decision="user_disconnect"
+            organization_id=organization_id,
+            ai_decision__in=["user_disconnect", "network_disconnect"],
         )
 
         if job_id:
@@ -156,7 +159,7 @@ def retry_all_disconnected_candidates(request):
                         welcome_text,
                         config.voice_id,
                         interview.candidate_email,
-                        True
+                        True,
                     ],
                     countdown=countdown,
                 )
