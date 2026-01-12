@@ -18,7 +18,7 @@ def retry_disconnected_candidate(request, interview_id):
             uid=interview_id,
             organization=request.user.get_organization(),
         )
-        if interview.ai_decision in ["user_disconnect", "network_disconnect"]:
+        if interview.ai_decision not in ["user_disconnect", "network_disconnect"]:
             return Response(
                 {
                     "error": "This candidate was not disconnected",
