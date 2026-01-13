@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import traceback
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -9,8 +10,9 @@ from celery import shared_task
 from dotenv import load_dotenv
 from jsonschema import Draft202012Validator
 from openai import OpenAI
+from django.utils import timezone
 
-from ai_lead_generation.models import MarketingAutomationConfig
+from ai_lead_generation.models import MarketingAutomationConfig, MarketingAutomationReport
 from subscription.models import Subscription
 
 load_dotenv()
@@ -139,7 +141,7 @@ def normalize_nulls(data: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def detect_company_hiring_status(
-    company_name: str, company_address: str
+    company_name: str, company_address: str, report: MarketingAutomationReport
 ) -> Optional[Dict[str, Any]]:
     """
     Use AI to detect if a company is actively hiring.
@@ -147,6 +149,7 @@ def detect_company_hiring_status(
     Args:
         company_name: Name of the company
         company_address: Address/location of the company
+        report: Report instance to track API calls
 
     Returns:
         Dictionary with hiring status, job titles, and agency status, or None on error
@@ -169,6 +172,10 @@ def detect_company_hiring_status(
                 },
             ],
         )
+
+        # Track API call
+        report.ai_api_calls += 1
+        report.save(update_fields=['ai_api_calls'])
 
         raw = response.choices[0].message.content or ""
         content = strip_code_fences(raw)
@@ -193,7 +200,19 @@ def detect_company_hiring_status(
         return None
 
 
-def fetch_all_companies(config: MarketingAutomationConfig) -> List[Dict[str, Any]]:
+def fetch_all_companies(
+    config: MarketingAutomationConfig, report: MarketingAutomationReport
+) -> List[Dict[str, Any]]:
+    """
+    Fetch companies from the platform API.
+    
+    Args:
+        config: Marketing automation configuration
+        report: Report instance to track API calls
+    
+    Returns:
+        List of company dictionaries
+    """
     try:
         access_token = config.platform.access_token
         headers = {
@@ -208,6 +227,10 @@ def fetch_all_companies(config: MarketingAutomationConfig) -> List[Dict[str, Any
             companies_url, headers=headers, params=params, timeout=30
         )
 
+        # Track API call
+        report.platform_api_calls += 1
+        report.save(update_fields=['platform_api_calls'])
+
         if response.status_code == 401:
             access_token = config.platform.refresh_access_token()
             if access_token:
@@ -215,10 +238,17 @@ def fetch_all_companies(config: MarketingAutomationConfig) -> List[Dict[str, Any
                 response = requests.get(
                     companies_url, headers=headers, params=params, timeout=30
                 )
+                report.platform_api_calls += 1
+                report.save(update_fields=['platform_api_calls'])
 
         if response.status_code == 200:
             companies = response.json().get("items", [])
             print(f"✓ Fetched {len(companies)} companies")
+            
+            # Update report
+            report.total_companies_fetched = len(companies)
+            report.save(update_fields=['total_companies_fetched'])
+            
             return companies
 
         return []
@@ -233,7 +263,21 @@ def create_opportunity(
     job_title: str,
     owner_user_ids: list,
     config: MarketingAutomationConfig,
+    report: MarketingAutomationReport,
 ) -> bool:
+    """
+    Create an opportunity for a company.
+    
+    Args:
+        company_id: ID of the company
+        job_title: Job title for the opportunity
+        owner_user_ids: List of owner user IDs
+        config: Marketing automation configuration
+        report: Report instance to track metrics
+    
+    Returns:
+        True if successful, False otherwise
+    """
     try:
         access_token = config.platform.access_token
         headers = {
@@ -255,6 +299,10 @@ def create_opportunity(
             opportunities_url, json=payload, headers=headers, timeout=30
         )
 
+        # Track API call
+        report.platform_api_calls += 1
+        report.save(update_fields=['platform_api_calls'])
+
         if response.status_code == 401:
             access_token = config.platform.refresh_access_token()
             if access_token:
@@ -262,29 +310,55 @@ def create_opportunity(
                 response = requests.post(
                     opportunities_url, json=payload, headers=headers, timeout=30
                 )
+                report.platform_api_calls += 1
+                report.save(update_fields=['platform_api_calls'])
 
         if response.status_code in [200, 201]:
             opportunity_id = response.json().get("opportunityId")
             print(f"    ✓ Created opportunity: {job_title} (ID: {opportunity_id})")
+            
+            # Update report
+            report.opportunities_created += 1
+            report.add_job_title(job_title)
+            report.save(update_fields=['opportunities_created', 'job_titles_found'])
+            
             return True
 
         print(f"    ✗ Failed to create opportunity: {response.status_code}")
+        report.opportunities_failed += 1
+        report.save(update_fields=['opportunities_failed'])
         return False
 
     except Exception as e:
         print(f"    ✗ Error creating opportunity: {str(e)}")
+        report.opportunities_failed += 1
+        report.save(update_fields=['opportunities_failed'])
         return False
 
 
 def process_company_for_marketing(
-    company: Dict[str, Any], config: MarketingAutomationConfig
+    company: Dict[str, Any],
+    config: MarketingAutomationConfig,
+    report: MarketingAutomationReport,
 ):
+    """
+    Process a single company for marketing automation.
+    
+    Args:
+        company: Company data dictionary
+        config: Marketing automation configuration
+        report: Report instance to track metrics
+    """
     company_id = company.get("companyId")
     company_name = company.get("name", "Unknown Company")
 
     print(f"\n  [{company_id}] Processing: {company_name}")
 
     try:
+        # Track that we're processing this company
+        report.companies_processed += 1
+        report.save(update_fields=['companies_processed'])
+
         address = company.get("primaryAddress", {}).get("name", "null")
         company_phone = company.get("primaryAddress", {}).get("phone", "null")
 
@@ -302,12 +376,18 @@ def process_company_for_marketing(
         # Validation 1: Check if company has contact information
         if phone == "null" and email == "null":
             print(f"  ❌ Skipping: No contact info (phone: {phone}, email: {email})")
+            report.companies_skipped += 1
+            report.skipped_no_contact += 1
+            report.save(update_fields=['companies_skipped', 'skipped_no_contact'])
             return
-        business_info = f"Company name: {company_name}\nAddress: {address}"
-        hiring_data = detect_company_hiring_status(company_name, address)
+
+        # Analyze hiring status
+        hiring_data = detect_company_hiring_status(company_name, address, report)
 
         if not hiring_data:
             print("  ✗ Failed to analyze hiring status")
+            report.companies_failed += 1
+            report.save(update_fields=['companies_failed'])
             return
 
         print(f"  ✓ AI Analysis: {hiring_data}")
@@ -316,12 +396,39 @@ def process_company_for_marketing(
         job_titles = hiring_data.get("Hiring Job Title/Position", ["null"])
         is_agency = hiring_data.get("Is agency", "null")
 
+        # Track agency detection
+        if is_agency == "Yes":
+            report.agencies_detected += 1
+            report.save(update_fields=['agencies_detected'])
+            
+            # Check if we should exclude agencies
+            if config.exclude_agencies:
+                print("  ❌ Skipping: Company is a recruitment agency")
+                report.companies_skipped += 1
+                report.agencies_excluded += 1
+                report.save(update_fields=['companies_skipped', 'agencies_excluded'])
+                return
+
+        # Check if company is hiring
+        if is_hiring != "Yes":
+            print(f"  ❌ Skipping: Not actively hiring (status: {is_hiring})")
+            report.companies_skipped += 1
+            report.skipped_no_hiring += 1
+            report.save(update_fields=['companies_skipped', 'skipped_no_hiring'])
+            return
+
         # Validation 3: Check for valid job titles
         if job_titles == ["null"] or not job_titles or len(job_titles) == 0:
             print("  ❌ Skipping: No job titles found")
+            report.companies_skipped += 1
+            report.skipped_no_job_titles += 1
+            report.save(update_fields=['companies_skipped', 'skipped_no_job_titles'])
             return
 
-        # Company is hiring! Proceed with opportunity creation and marketing
+        # Company is hiring! Track this
+        report.companies_hiring += 1
+        report.save(update_fields=['companies_hiring'])
+        
         print(f"  ✓ Company is hiring: {len(job_titles)} position(s)")
 
         # Determine contact method and contact information
@@ -349,68 +456,119 @@ def process_company_for_marketing(
             # Get owner user IDs from config
             owner_user_ids = config.opportunity_owners
             success = create_opportunity(
-                company_id, f"test {job_title}", owner_user_ids, config
+                company_id, f"test {job_title}", owner_user_ids, config, report
             )
             if success:
                 opportunities_created = True
 
-        if not opportunities_created:
+        if opportunities_created:
+            # Track company with opportunities
+            report.add_company_with_opportunity(company_id)
+            report.save(update_fields=['companies_with_opportunities'])
+            print(f"  ✓ Completed: {company_id}")
+        else:
             print("  ✗ Failed to create any opportunities")
-            return
-
-        # Determine the job title for marketing message
-        actual_job_title = None
-        if len(job_titles) == 1 and job_titles[0] != "null":
-            actual_job_title = job_titles[0]
-
-        print(f"  ✓ Completed: {company_id}")
 
     except Exception as e:
         print(f"  ✗ Error processing company: {str(e)}")
+        report.companies_failed += 1
+        report.save(update_fields=['companies_failed'])
 
 
 @shared_task
 def run_marketing_automation_for_organization(organization_id: int):
+    """
+    Run marketing automation for a specific organization and generate a report.
+    
+    Args:
+        organization_id: ID of the organization to run automation for
+    """
     print(f"\n{'=' * 80}")
     print(f"Marketing Automation - Organization: {organization_id}")
     print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'=' * 80}\n")
 
+    # Initialize report
+    report = None
+
     try:
+        # Get configuration
         config = MarketingAutomationConfig.objects.get(
             organization_id=organization_id, is_active=True
         )
+        
+        # Create report
+        report = MarketingAutomationReport.objects.create(
+            organization_id=organization_id,
+            config=config,
+            status='running'
+        )
+        
+        print(f"📊 Created report ID: {report.id}")
+
     except MarketingAutomationConfig.DoesNotExist:
         print(f"✗ No active marketing automation config for org {organization_id}")
         return
 
-    print("\n[Step 1] Fetching companies...")
-    companies = fetch_all_companies(config)
+    try:
+        # Fetch companies
+        print("\n[Step 1] Fetching companies...")
+        companies = fetch_all_companies(config, report)
 
-    if not companies:
-        print("✗ No companies found")
-        return
+        if not companies:
+            print("✗ No companies found")
+            report.mark_completed(status='completed')
+            return
 
-    print(f"\n[Step 2] Processing {len(companies)} companies...")
+        print(f"\n[Step 2] Processing {len(companies)} companies...")
 
-    for idx, company in enumerate(companies, 1):
-        print(f"\n{'─' * 80}")
-        print(f"[{idx}/{len(companies)}]")
-        process_company_for_marketing(company, config)
-        time.sleep(2)  # Rate limiting
+        # Process each company
+        for idx, company in enumerate(companies, 1):
+            print(f"\n{'─' * 80}")
+            print(f"[{idx}/{len(companies)}]")
+            process_company_for_marketing(company, config, report)
+            time.sleep(2)  # Rate limiting
 
-    print(f"\n{'=' * 80}")
-    print(f"✓ Completed: Organization {organization_id}")
-    print(f"{'=' * 80}\n")
+        # Mark report as completed
+        report.mark_completed(status='completed')
+
+        print(f"\n{'=' * 80}")
+        print(f"✓ Completed: Organization {organization_id}")
+        print(f"\n📊 Report Summary:")
+        print(f"   - Companies Fetched: {report.total_companies_fetched}")
+        print(f"   - Companies Processed: {report.companies_processed}")
+        print(f"   - Companies Hiring: {report.companies_hiring}")
+        print(f"   - Companies Skipped: {report.companies_skipped}")
+        print(f"   - Opportunities Created: {report.opportunities_created}")
+        print(f"   - Duration: {report.duration_seconds}s")
+        print(f"   - Success Rate: {report.get_success_rate():.1f}%")
+        print(f"{'=' * 80}\n")
+
+    except Exception as e:
+        error_msg = f"Fatal error in automation: {str(e)}"
+        error_details = {
+            'error': str(e),
+            'traceback': traceback.format_exc(),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        print(f"\n✗ {error_msg}")
+        print(f"✗ Traceback: {traceback.format_exc()}")
+        
+        if report:
+            report.mark_failed(error_msg, error_details)
 
 
 @shared_task
 def initiate_marketing_automation_for_all_organizations():
+    """
+    Initiate marketing automation for all organizations with active subscriptions.
+    """
     print("\n[Task Initiated] Marketing Automation for All Organizations")
 
-    subscribed_org_ids = Subscription.objects.filter(available_limit__gt=0).values_list(
-        "organization_id", flat=True
-    )
+    subscribed_org_ids = Subscription.objects.filter(
+        available_limit__gt=0
+    ).values_list("organization_id", flat=True)
 
     print(f"Found {len(subscribed_org_ids)} subscribed organizations")
 

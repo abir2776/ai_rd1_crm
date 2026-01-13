@@ -7,13 +7,17 @@ from typing import Any, Dict
 
 import requests
 from celery import shared_task
+from django.utils import timezone
 from dotenv import load_dotenv
 from jsonschema import Draft202012Validator
 from openai import OpenAI
 
+from ai_lead_generation.models import (
+    CandidateLeadResult,
+    LeadGenerationConfig,
+    LeadGenerationReport,
+)
 from subscription.models import Subscription
-
-from ai_lead_generation.models import LeadGenerationConfig
 
 load_dotenv()
 
@@ -38,7 +42,7 @@ def return_Schema():
                         "Company name": {"type": "string"},
                         "Industry / Sector": {
                             "type": "string"
-                        },  # e.g., Construction, Logistics
+                        },
                         "Company address": {
                             "type": "object",
                             "additionalProperties": False,
@@ -49,10 +53,10 @@ def return_Schema():
                                 "postalCode": {"type": "string"},
                                 "countryCode": {
                                     "type": "string"
-                                },  # 2-letter if available, else country name or "null"
+                                },
                                 "name": {
                                     "type": "string"
-                                },  # "city, Country" when possible
+                                },
                             },
                             "required": [
                                 "street",
@@ -75,7 +79,7 @@ def return_Schema():
                         "Contact person name (First Last)": {"type": "string"},
                         "Contact person position": {
                             "type": "string"
-                        },  # Hiring manager / HR / MD / Ops Manager
+                        },
                         "Contact phone (international format)": {"type": "string"},
                         "Contact email (work email preferred)": {"type": "string"},
                         "Is related company (Logistics, Haulage, School, Transport & Recruitment)": {
@@ -360,7 +364,6 @@ def fetch_all_attachments(candidate_id: int, config: LeadGenerationConfig) -> st
                     print(f"    ⚠ No URL for attachment {idx}")
                     continue
 
-                # Check if it's a PDF file
                 file_extension = (
                     attachment_name.lower().split(".")[-1]
                     if "." in attachment_name
@@ -408,7 +411,6 @@ def fetch_all_attachments(candidate_id: int, config: LeadGenerationConfig) -> st
                 else:
                     print(f"    ⚠ No text extracted from {attachment_name}")
 
-                # Delete file immediately after extraction
                 if temp_file_path and os.path.exists(temp_file_path):
                     os.remove(temp_file_path)
 
@@ -463,6 +465,19 @@ def check_company_exists(company_name: str, config: LeadGenerationConfig) -> tup
         return False, None
     except:
         return False, None
+
+
+def has_valid_contact_info(company_data: dict) -> bool:
+    """Check if company has at least one valid contact field"""
+    contact_name = company_data.get("Contact person name (First Last)", "").strip()
+    contact_email = company_data.get("Contact email (work email preferred)", "").strip()
+    contact_phone = company_data.get("Contact phone (international format)", "").strip()
+    
+    return (
+        (contact_name and contact_name != "null") or
+        (contact_email and contact_email != "null") or
+        (contact_phone and contact_phone != "null")
+    )
 
 
 def create_company_in_jobadder(company_data: dict, config: LeadGenerationConfig) -> int:
@@ -575,7 +590,8 @@ def create_company_address(
 
 def create_contact_in_jobadder(
     contact_data: dict, company_id: int, config: LeadGenerationConfig
-):
+) -> int:
+    """Create contact and return contact ID if successful"""
     try:
         access_token = config.platform.access_token
         headers = {
@@ -622,14 +638,20 @@ def create_contact_in_jobadder(
                 )
 
         if response.status_code in [200, 201]:
-            print(f"      ✓ Created contact: {full_name}")
+            contact_id = response.json().get("contactId")
+            print(f"      ✓ Created contact: {full_name} (ID: {contact_id})")
+            return contact_id
+        
+        return None
     except Exception as e:
         print(f"      ✗ Error creating contact: {str(e)}")
+        return None
 
 
 def create_additional_contact(
     contact_data: dict, company_id: int, config: LeadGenerationConfig
-):
+) -> int:
+    """Create additional contact and return contact ID if successful"""
     try:
         access_token = config.platform.access_token
         headers = {
@@ -668,45 +690,80 @@ def create_additional_contact(
                 )
 
         if response.status_code in [200, 201]:
-            print(f"        ✓ Created contact: {full_name}")
+            contact_id = response.json().get("contactId")
+            print(f"        ✓ Created contact: {full_name} (ID: {contact_id})")
+            return contact_id
+        
+        return None
     except Exception as e:
         print(f"        ✗ Error creating contact: {str(e)}")
+        return None
 
 
 def process_candidate_for_lead_generation(
-    candidate: dict, config: LeadGenerationConfig
+    candidate: dict, config: LeadGenerationConfig, report: LeadGenerationReport
 ):
+    """Process a single candidate and update report metrics"""
     candidate_id = candidate.get("candidateId")
     candidate_name = f"{candidate.get('firstName', '')} {candidate.get('lastName', '')}"
 
     print(f"\n  [{candidate_id}] Processing: {candidate_name}")
 
+    result = CandidateLeadResult.objects.create(
+        report=report,
+        candidate_id=candidate_id,
+        candidate_name=candidate_name,
+    )
+
     try:
-        # Updated: Now fetches ALL attachments instead of just formatted resume
         resume_text = fetch_all_attachments(candidate_id, config)
 
         if not resume_text:
             print("  ⚠ No resume content")
+            report.candidates_with_no_resume += 1
+            report.save()
+            result.error_message = "No resume content found"
+            result.save()
             return
 
+        result.had_resume = True
+        result.resume_text_length = len(resume_text)
+
         extracted_data = extract_companies_and_contacts_from_resume(resume_text)
+        result.extracted_data = extracted_data
 
         companies = extracted_data.get("companies", [])
         contacts_in_cv = extracted_data.get("Contacts in CV", [])
+
+        result.companies_extracted = len(companies)
+        result.contacts_extracted = len(contacts_in_cv)
+
+        report.total_companies_extracted += len(companies)
+        report.total_contacts_extracted += len(contacts_in_cv)
+
         print("Companies: ", companies)
         print("Contacts: ", contacts_in_cv)
 
         if not companies and not contacts_in_cv:
             print("  ⚠ No data extracted")
+            report.candidates_with_no_data += 1
+            report.save()
+            result.error_message = "No data extracted from resume"
+            result.save()
             return
 
         company_id_map = {}
+        companies_created = 0
+        companies_skipped = 0
+        contacts_created = 0
 
+        # Process companies
         for company in companies:
             company_name = company.get("Company name", "").strip()
 
             if not company_name or company_name == "null":
                 print("    ❌ Missing company name, skipping")
+                companies_skipped += 1
                 continue
 
             is_related = company.get(
@@ -714,16 +771,31 @@ def process_candidate_for_lead_generation(
             )
             if is_related == "Yes":
                 print("    ❌ Related company (Logistics/Haulage/etc), skipping")
+                report.companies_skipped_related += 1
+                companies_skipped += 1
                 continue
 
             address_name = company.get("Company address", {}).get("name")
-            if not address_name or address_name == "null":
+            if config.is_company_address_required and (
+                not address_name or address_name == "null"
+            ):
                 print("    ❌ Missing company address, skipping")
+                report.companies_skipped_no_address += 1
+                companies_skipped += 1
+                continue
+
+            # Check if contact info is required and present
+            if config.is_contacts_item_required and not has_valid_contact_info(company):
+                print("    ❌ Missing contact information (required), skipping")
+                report.companies_skipped_no_contact += 1
+                companies_skipped += 1
                 continue
 
             exists, existing_id = check_company_exists(company_name, config)
             if exists:
                 print(f"    ⚠ Company exists (ID: {existing_id}), skipping")
+                report.companies_skipped_existing += 1
+                companies_skipped += 1
                 continue
 
             print(f"\n    Creating: {company_name}")
@@ -732,35 +804,89 @@ def process_candidate_for_lead_generation(
 
             if company_id:
                 company_id_map[company_name] = company_id
+                result.created_company_ids.append(company_id)
+                report.created_company_ids.append(company_id)
+                companies_created += 1
+                report.total_companies_created += 1
+
                 create_company_address(company_id, company, config)
-                create_contact_in_jobadder(company, company_id, config)
+                
+                # Create primary contact
+                contact_id = create_contact_in_jobadder(company, company_id, config)
+                if contact_id:
+                    result.created_contact_ids.append(contact_id)
+                    report.created_contact_ids.append(contact_id)
+                    report.total_contacts_created += 1
+                else:
+                    report.total_contacts_failed += 1
+                
+                time.sleep(0.5)
+            else:
+                report.total_companies_failed += 1
+
+        # Process additional contacts
+        if config.find_contacts_without_company:
+            for contact in contacts_in_cv:
+                person_name = contact.get("person_name", "").strip()
+                phone = contact.get("phone_or_mobile", "").strip()
+                company_name = contact.get("company_name", "").strip()
+
+                if (
+                    not person_name
+                    or person_name == "null"
+                    or not phone
+                    or phone == "null"
+                ):
+                    continue
+
+                print(f"\n      Creating additional contact: {person_name}")
+
+                company_id = None
+                if company_name and company_name != "null":
+                    company_id = company_id_map.get(company_name)
+                    if not company_id:
+                        exists, existing_id = check_company_exists(company_name, config)
+                        if exists:
+                            company_id = existing_id
+
+                contact_id = create_additional_contact(contact, company_id, config)
+                if contact_id:
+                    result.created_contact_ids.append(contact_id)
+                    report.created_contact_ids.append(contact_id)
+                    contacts_created += 1
+                    report.total_contacts_created += 1
+                else:
+                    report.total_contacts_failed += 1
+                
                 time.sleep(0.5)
 
-        for contact in contacts_in_cv:
-            person_name = contact.get("person_name", "").strip()
-            phone = contact.get("phone_or_mobile", "").strip()
-            company_name = contact.get("company_name", "").strip()
+        # Update result
+        result.companies_created = companies_created
+        result.companies_skipped = companies_skipped
+        result.contacts_created = contacts_created
+        result.processed_successfully = True
+        result.save()
 
-            if not person_name or person_name == "null" or not phone or phone == "null":
-                continue
-
-            print(f"\n      Creating additional contact: {person_name}")
-
-            company_id = None
-            if company_name and company_name != "null":
-                company_id = company_id_map.get(company_name)
-                if not company_id:
-                    exists, existing_id = check_company_exists(company_name, config)
-                    if exists:
-                        company_id = existing_id
-
-            create_additional_contact(contact, company_id, config)
-            time.sleep(0.5)
+        report.total_companies_skipped += companies_skipped
+        report.save()
 
         print(f"\n  ✓ Completed: {candidate_id}")
 
     except Exception as e:
-        print(f"  ✗ Error: {str(e)}")
+        error_msg = str(e)
+        print(f"  ✗ Error: {error_msg}")
+
+        result.processed_successfully = False
+        result.error_message = error_msg
+        result.save()
+
+        report.total_candidates_failed += 1
+        report.candidate_ids_failed.append(candidate_id)
+
+        if not report.error_details:
+            report.error_details = {}
+        report.error_details[str(candidate_id)] = error_msg
+        report.save()
 
 
 def fetch_all_candidates(config: LeadGenerationConfig) -> list:
@@ -834,24 +960,60 @@ def run_ai_lead_generation_for_organization(organization_id: int):
         print(f"✗ No active config for org {organization_id}")
         return
 
-    print("\n[Step 1] Fetching candidates...")
-    candidates = fetch_all_candidates(config)
+    report = LeadGenerationReport.objects.create(
+        organization_id=organization_id,
+        config=config,
+        status="processing",
+        started_at=timezone.now(),
+    )
 
-    if not candidates:
-        print("✗ No candidates found")
-        return
+    try:
+        print("\n[Step 1] Fetching candidates...")
+        candidates = fetch_all_candidates(config)
 
-    print(f"\n[Step 2] Processing {len(candidates)} candidates...")
+        if not candidates:
+            print("✗ No candidates found")
+            report.status = "completed"
+            report.completed_at = timezone.now()
+            report.save()
+            return
 
-    for idx, candidate in enumerate(candidates, 1):
-        print(f"\n{'─' * 80}")
-        print(f"[{idx}/{len(candidates)}]")
-        process_candidate_for_lead_generation(candidate, config)
-        time.sleep(2)
+        print(f"\n[Step 2] Processing {len(candidates)} candidates...")
 
-    print(f"\n{'=' * 80}")
-    print(f"✓ Completed: org {organization_id}")
-    print(f"{'=' * 80}\n")
+        for idx, candidate in enumerate(candidates, 1):
+            print(f"\n{'─' * 80}")
+            print(f"[{idx}/{len(candidates)}]")
+
+            candidate_id = candidate.get("candidateId")
+            report.candidate_ids_processed.append(candidate_id)
+            report.total_candidates_processed += 1
+            report.save()
+
+            process_candidate_for_lead_generation(candidate, config, report)
+            time.sleep(2)
+
+        report.status = "completed"
+        report.completed_at = timezone.now()
+        report.save()
+
+        print(f"\n{'=' * 80}")
+        print(f"✓ Completed: org {organization_id}")
+        print(f"  Total processed: {report.total_candidates_processed}")
+        print(f"  Companies created: {report.total_companies_created}")
+        print(f"  Contacts created: {report.total_contacts_created}")
+        print(f"  Company IDs: {report.created_company_ids}")
+        print(f"  Contact IDs: {report.created_contact_ids}")
+        print(f"  Success rate: {report.success_rate}%")
+        print(f"{'=' * 80}\n")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"\n✗ Fatal error: {error_msg}")
+
+        report.status = "failed"
+        report.error_message = error_msg
+        report.completed_at = timezone.now()
+        report.save()
 
 
 @shared_task
