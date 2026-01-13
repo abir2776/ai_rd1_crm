@@ -8,4 +8,5 @@ urlpatterns = [
     path("message/", include("interview.rest.urls.message")),
     path("status/", include("interview.rest.urls.status")),
     path("retry/", include("interview.rest.urls.recall")),
+    path("client/call/", include("interview.rest.urls.client_call_test")),
 ]

@@ -8,7 +8,7 @@ from celery import shared_task
 from django.core.files.base import ContentFile
 from dotenv import load_dotenv
 
-from interview.models import AIPhoneCallConfig, InterviewTaken
+from interview.models import AIPhoneCallConfig, CallRequest, InterviewTaken
 from organizations.models import Organization
 from subscription.models import Subscription
 
@@ -99,7 +99,7 @@ def make_interview_call(
     welcome_text: str = None,
     voice_id: str = "SQ1QAX1hsTZ1d6O0dCWA",
     candidate_email: str = None,
-    is_retry: bool = False
+    is_retry: bool = False,
 ):
     try:
         is_taken = False
@@ -139,7 +139,9 @@ def make_interview_call(
             update_application_status_after_call(organization_id, application_id)
 
         else:
-            print(f"Already called for an interview candidate_id:{candidate_id}, application:{application_id}")
+            print(
+                f"Already called for an interview candidate_id:{candidate_id}, application:{application_id}"
+            )
 
     except Exception as exc:
         print(f"Error making call to {to_number}: {str(exc)}")
@@ -442,3 +444,31 @@ def initiate_all_interview():
     for organization_id in subscribed_organization_ids:
         print(f"Initiated bulk interview call for organization_{organization_id}")
         bulk_interview_calls.delay(organization_id)
+
+
+@shared_task(bind=True, max_retries=3)
+def initiate_call(self, call_request_id):
+    try:
+        call = CallRequest.objects.get(id=call_request_id)
+        print(f"Calling {call.phone} for {call.name}")
+        payload = {
+            "from_phone_number": "+447428941629",
+            "to_phone_number": call.phone,
+            "client_name": call.name,
+            "voice_id": "SQ1QAX1hsTZ1d6O0dCWA",
+        }
+        response = requests.post(
+            f"{BASE_API_URL}/initiate-client-test-call",
+            json=payload,
+            timeout=30,
+        )
+        response.raise_for_status()
+        print("Call initiated successfully")
+        call.is_called = True
+        call.save(update_fields=["is_called"])
+        return "Call completed"
+
+    except CallRequest.DoesNotExist:
+        return "Invalid Call Request"
+    except Exception as e:
+        self.retry(exc=e, countdown=30)

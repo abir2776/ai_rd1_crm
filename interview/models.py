@@ -16,8 +16,8 @@ class InterviewTaken(BaseModelWithUID):
     candidate_email = models.CharField(max_length=100, null=True, blank=True)
     candidate_phone = models.CharField(max_length=100, null=True, blank=True)
     job_id = models.PositiveIntegerField(null=True, blank=True)
-    job_title = models.CharField(null=True,blank=True,max_length=255)
-    job_details = models.JSONField(null=True,blank=True)
+    job_title = models.CharField(null=True, blank=True, max_length=255)
+    job_details = models.JSONField(null=True, blank=True)
     interview_status = models.CharField(max_length=100, null=True, blank=True)
     ai_decision = models.CharField(max_length=100, null=True, blank=True)
     started_at = models.DateTimeField(null=True, blank=True)
@@ -184,3 +184,24 @@ class InterviewMessageConversation(BaseModelWithUID):
 
     def __str__(self):
         return f"Conversation {self.application_id} - {self.candidate_id}"
+
+
+class CallRequest(models.Model):
+    CALL_NOW = "NOW"
+    CALL_SCHEDULE = "SCHEDULE"
+
+    CALL_TYPE_CHOICES = [
+        (CALL_NOW, "Call Now"),
+        (CALL_SCHEDULE, "Schedule Call"),
+    ]
+
+    name = models.CharField(max_length=100)
+    phone = models.CharField(max_length=20)
+    call_type = models.CharField(max_length=10, choices=CALL_TYPE_CHOICES)
+    scheduled_at = models.DateTimeField(null=True, blank=True)
+    timezone = models.CharField(max_length=64, default="UTC")
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_called = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"{self.name} - {self.phone}"
