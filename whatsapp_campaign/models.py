@@ -100,7 +100,8 @@ class WhatsAppCampaignConfig(BaseModelWithUID):
             value = var.get("value", "")
             if value == "client_name":
                 variables_dict[serial] = client_name
-            variables_dict[serial] = value
+            else:
+                variables_dict[serial] = value
 
         return variables_dict
 
