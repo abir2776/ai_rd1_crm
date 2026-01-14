@@ -56,7 +56,7 @@ def fetch_contacts_from_jobadder(
                     if phone:
                         contact_data = {
                             "contact_id": contact.get("contactId"),
-                            "name": f"{contact.get('firstName', '')} {contact.get('lastName', '')}".strip(),
+                            "name": contact.get('firstName', ''),
                             "email": contact.get("email", ""),
                             "phone": "+8801537468323",
                             "company": contact.get("company", ""),
@@ -105,7 +105,7 @@ def fetch_contacts_from_jobadder(
                     if phone:
                         contact_data = {
                             "contact_id": contact.get("contactId"),
-                            "name": f"{contact.get('firstName', '')} {contact.get('lastName', '')}".strip(),
+                            "name": contact.get('firstName', ''),
                             "email": contact.get("email", ""),
                             "phone": "+447872603687",
                             "company": contact.get("company", ""),
