@@ -197,6 +197,8 @@ class CallRequest(models.Model):
 
     name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
+    company_name = models.CharField(max_length=155, null=True)
+    company_size = models.CharField(max_length=20, blank=True)
     call_type = models.CharField(max_length=10, choices=CALL_TYPE_CHOICES)
     scheduled_at = models.DateTimeField(null=True, blank=True)
     timezone = models.CharField(max_length=64, default="UTC")
@@ -205,3 +207,18 @@ class CallRequest(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.phone}"
+
+
+class MeetingBooking(models.Model):
+    SCHEDULED = "SCHEDULED"
+    COMPLETED = "COMPLETED"
+
+    STATUS_CHOICES = [
+        (SCHEDULED, "Scheduled"),
+        (COMPLETED, "Completed"),
+    ]
+    call_request = models.ForeignKey(CallRequest, on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=SCHEDULED)
+
+    def __str__(self):
+        return f"{self.call_request.phone} - {self.status}"

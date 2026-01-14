@@ -1,11 +1,16 @@
 # calls/views.py
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status
+from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from interview.models import CallRequest
-from interview.rest.serializers.client_call_test import CallRequestSerializer
+from interview.models import CallRequest, MeetingBooking
+from interview.rest.serializers.client_call_test import (
+    CallRequestSerializer,
+    MeetingBookingSerializer,
+)
 from interview.tasks.ai_phone import initiate_call
 from interview.throttles import CallRequestIPThrottle
 from interview.utils import local_to_utc
@@ -51,3 +56,11 @@ class CallRequestCreateView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class MeetingBookingAPIView(ListCreateAPIView):
+    serializer_class = MeetingBookingSerializer
+    pagination_class = [AllowAny]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["status"]
+    queryset = MeetingBooking.objects.filter()
