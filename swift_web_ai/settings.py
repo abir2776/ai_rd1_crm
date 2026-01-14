@@ -122,7 +122,11 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "60/minute", "user": "120/minute"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/minute",
+        "user": "120/minute",
+        "call_request_ip": "2/12h",
+    },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 40,
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
