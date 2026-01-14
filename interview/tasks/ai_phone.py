@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 from interview.models import AIPhoneCallConfig, CallRequest, InterviewTaken
 from organizations.models import Organization
+from subscription.choices import FeatureType
 from subscription.models import Subscription
 
 load_dotenv()
@@ -439,7 +440,9 @@ def bulk_interview_calls(organization_id: int = None):
 def initiate_all_interview():
     organization_ids = Organization.objects.filter().values_list("id", flat=True)
     subscribed_organization_ids = Subscription.objects.filter(
-        organization_id__in=organization_ids, available_limit__gt=0
+        organization_id__in=organization_ids,
+        available_limit__gt=0,
+        plan_feature__feature__type=FeatureType.AI_CALL,
     ).values_list("organization_id", flat=True)
     for organization_id in subscribed_organization_ids:
         print(f"Initiated bulk interview call for organization_{organization_id}")
