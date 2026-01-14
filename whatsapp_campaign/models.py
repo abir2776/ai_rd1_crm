@@ -1,8 +1,8 @@
 from django.db import models
 from django.utils import timezone
 
-from organizations.models import Organization, OrganizationPlatform
 from common.models import BaseModelWithUID
+from organizations.models import Organization, OrganizationPlatform
 
 
 class WhatsAppCampaignConfig(BaseModelWithUID):
@@ -60,11 +60,7 @@ class WhatsAppCampaignConfig(BaseModelWithUID):
         blank=True,
         help_text="Custom instructions for AI to handle responses to this campaign",
     )
-    from_phone_number = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True
-    )
+    from_phone_number = models.CharField(max_length=255, null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=[
@@ -97,12 +93,15 @@ class WhatsAppCampaignConfig(BaseModelWithUID):
     def __str__(self):
         return f"{self.campaign_title} - {self.organization.name}"
 
-    def get_content_variables_dict(self):
+    def get_content_variables_dict(self, client_name):
         variables_dict = {}
         for var in self.content_variables:
             serial = str(var.get("serial"))
             value = var.get("value", "")
+            if value == "client_name":
+                variables_dict[serial] = client_name
             variables_dict[serial] = value
+
         return variables_dict
 
     def mark_as_sending(self):

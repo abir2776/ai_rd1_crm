@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.postgres.fields import ArrayField
 from django.db import models
 
 from common.choices import Status
@@ -33,6 +34,8 @@ class PlanFeature(BaseModelWithUID):
     name = models.CharField(max_length=100)
     description = models.TextField(blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    usage_fee_included = models.BooleanField(default=True)
+    des_list = ArrayField(models.CharField(max_length=255), blank=True, default=list)
     status = models.CharField(
         max_length=20,
         choices=Status.choices,

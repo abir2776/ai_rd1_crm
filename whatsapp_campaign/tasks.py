@@ -217,7 +217,7 @@ def send_campaign_message_to_contact(
             contact_phone=phone,
             message_status="sending",
         )
-        content_variables = campaign.get_content_variables_dict()
+        content_variables = campaign.get_content_variables_dict(contact_data.get("name", ""))
         success, message_sid, error_message = send_campaign_whatsapp_message(
             to_number=phone,
             from_number=str(campaign.from_phone_number),
