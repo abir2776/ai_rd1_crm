@@ -12,6 +12,9 @@ app = Celery("swift_web_ai")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
+app.conf.timezone = 'Europe/London'
+app.conf.enable_utc = False
+
 
 @app.task(bind=True)
 def debug_task(self):
@@ -32,7 +35,11 @@ app.conf.beat_schedule = {
     # },
     "run-initiate-all-interview-every-5-min": {
         "task": "interview.tasks.ai_phone.initiate_all_interview",
-        "schedule": crontab(minute="*/5"),
+        "schedule": crontab(
+            minute="*/5",
+            hour="9-15",
+            day_of_week="5,6,0,1"
+        ),
     },
     # "format-cvs-every-3-minutes": {
     #     "task": "cv_formatter.tasks.initiate_all_cv_formatting",
