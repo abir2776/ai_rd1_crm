@@ -60,7 +60,7 @@ class CallRequestCreateView(APIView):
 
 class MeetingBookingAPIView(ListCreateAPIView):
     serializer_class = MeetingBookingSerializer
-    pagination_class = [AllowAny]
+    permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status","scheduled_at"]
     queryset = MeetingBooking.objects.filter()
