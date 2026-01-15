@@ -341,6 +341,9 @@ def fetch_platform_candidates(config):
                         updated_at = application.get("updatedAt", "")
                         status = application.get("status")
 
+                        if len(candidate_phone) == 0:
+                            candidate_phone = candidate.get("phone", "")
+
                         if candidate_phone and not candidate_phone.startswith("+"):
                             if candidate_phone.startswith("0"):
                                 candidate_phone = f"+44{candidate_phone[1:]}"
@@ -353,6 +356,7 @@ def fetch_platform_candidates(config):
                             status.get("statusId")
                             == config.application_status_for_calling
                             and has_enough_time_passed(updated_at, waiting_duration)
+                            and len(candidate_phone) > 0
                         ):
                             candidate_data = {
                                 "to_number": candidate_phone,
