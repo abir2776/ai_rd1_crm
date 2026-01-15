@@ -18,7 +18,7 @@ from interview.utils import local_to_utc
 
 class CallRequestCreateView(APIView):
     permission_classes = [AllowAny]
-    throttle_classes = [CallRequestIPThrottle]
+    # throttle_classes = [CallRequestIPThrottle]
 
     def post(self, request):
         serializer = CallRequestSerializer(data=request.data)
