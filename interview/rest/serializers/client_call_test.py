@@ -13,6 +13,8 @@ class CallRequestSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "phone",
+            "company_name",
+            "company_size",
             "call_type",
             "scheduled_at",
             "timezone",
