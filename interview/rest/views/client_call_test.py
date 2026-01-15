@@ -26,23 +26,14 @@ class CallRequestCreateView(APIView):
 
         data = serializer.validated_data
 
-        scheduled_at_utc = None
-        if data["call_type"] == CallRequest.CALL_SCHEDULE:
-            scheduled_dt = data["scheduled_at"]
-            if scheduled_dt.tzinfo is not None:
-                scheduled_dt = scheduled_dt.replace(tzinfo=None)
-            
-            scheduled_at_utc = local_to_utc(
-                scheduled_dt,
-                data.get("timezone", "UTC"),
-            )
-
+        scheduled_at = data["scheduled_at"]
         call_request = CallRequest.objects.create(
             name=data["name"],
             phone=data["phone"],
             call_type=data["call_type"],
-            scheduled_at=scheduled_at_utc,
-            timezone=data.get("timezone", "UTC"),
+            scheduled_at=scheduled_at,
+            company_name = data["company_name"],
+            company_size= data["company_size"]
         )
 
         if call_request.call_type == CallRequest.CALL_NOW:
@@ -50,7 +41,7 @@ class CallRequestCreateView(APIView):
         else:
             initiate_call.apply_async(
                 args=[call_request.id],
-                eta=scheduled_at_utc,
+                eta=scheduled_at,
             )
 
         return Response(

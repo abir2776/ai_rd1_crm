@@ -12,9 +12,6 @@ app = Celery("swift_web_ai")
 app.config_from_object("django.conf:settings", namespace="CELERY")
 app.autodiscover_tasks()
 
-app.conf.timezone = 'Europe/London'
-app.conf.enable_utc = False
-
 
 @app.task(bind=True)
 def debug_task(self):
