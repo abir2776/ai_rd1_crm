@@ -28,8 +28,12 @@ class CallRequestCreateView(APIView):
 
         scheduled_at_utc = None
         if data["call_type"] == CallRequest.CALL_SCHEDULE:
+            scheduled_dt = data["scheduled_at"]
+            if scheduled_dt.tzinfo is not None:
+                scheduled_dt = scheduled_dt.replace(tzinfo=None)
+            
             scheduled_at_utc = local_to_utc(
-                data["scheduled_at"],
+                scheduled_dt,
                 data.get("timezone", "UTC"),
             )
 
