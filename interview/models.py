@@ -219,6 +219,7 @@ class MeetingBooking(models.Model):
     ]
     call_request = models.ForeignKey(CallRequest, on_delete=models.CASCADE)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=SCHEDULED)
+    scheduled_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"{self.call_request.phone} - {self.status}"
