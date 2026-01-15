@@ -3,11 +3,11 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from interview.models import InterviewConversation
+from interview.models import InterviewCallConversation
 
 from ..serializers.conversations import (
     ConversationSaveSerializer,
-    InterviewConversationSerializer,
+    InterviewCallConversationSerializer,
 )
 
 
@@ -32,13 +32,16 @@ class SaveConversationView(APIView):
 
         try:
             # Create or update conversation record
-            conversation, created = InterviewConversation.objects.update_or_create(
+            conversation, created = InterviewCallConversation.objects.update_or_create(
                 call_sid=validated_data["call_sid"],
                 defaults={
                     "application_id": validated_data["application_id"],
                     "organization_id": validated_data["organization_id"],
                     "interview_id": validated_data["interview_id"],
                     "candidate_id": validated_data["candidate_id"],
+                    "candidate_name": validated_data["candidate_name"],
+                    "candidate_phone": validated_data["candidate_phone"],
+                    "candidate_email": validated_data["candidate_email"],
                     "job_id": validated_data["job_id"],
                     "conversation_text": validated_data["conversation_text"],
                     "conversation_json": validated_data["conversation_json"],
@@ -48,7 +51,7 @@ class SaveConversationView(APIView):
                 },
             )
 
-            response_serializer = InterviewConversationSerializer(conversation)
+            response_serializer = InterviewCallConversationSerializer(conversation)
 
             return Response(
                 {
@@ -78,12 +81,12 @@ class GetConversationView(APIView):
     def get(self, request, call_sid):
         try:
             organization = request.user.get_organization()
-            conversation = InterviewConversation.objects.get(
+            conversation = InterviewCallConversation.objects.get(
                 call_sid=call_sid, organization=organization
             )
-            serializer = InterviewConversationSerializer(conversation)
+            serializer = InterviewCallConversationSerializer(conversation)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        except InterviewConversation.DoesNotExist:
+        except InterviewCallConversation.DoesNotExist:
             return Response(
                 {"error": "Conversation not found"}, status=status.HTTP_404_NOT_FOUND
             )

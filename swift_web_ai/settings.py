@@ -50,6 +50,11 @@ CREATED_APPS = [
     "interview",
     "phone_number",
     "cv_formatter",
+    "ai_gdpr",
+    "awr_compliance",
+    "ai_skill_search",
+    "ai_lead_generation",
+    "whatsapp_campaign",
 ]
 THIRD_PARTY_APPS = [
     "versatileimagefield",
@@ -57,6 +62,7 @@ THIRD_PARTY_APPS = [
     "rest_framework_simplejwt",
     "rest_framework",
     "corsheaders",
+    "django_filters",
 ]
 INSTALLED_APPS = DEFAULT_APPS + CREATED_APPS + THIRD_PARTY_APPS
 
@@ -116,9 +122,13 @@ REST_FRAMEWORK = {
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "60/minute", "user": "120/minute"},
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/minute",
+        "user": "120/minute",
+    },
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 40,
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
 }
 
 SIMPLE_JWT = {
@@ -128,8 +138,8 @@ SIMPLE_JWT = {
 }
 
 # Celery Configuration Options
-CELERY_BROKER_URL = "redis://redis:6379/0"
-CELERY_RESULT_BACKEND = "redis://redis:6379/0"
+CELERY_BROKER_URL = "redis://localhost:6379/0"
+CELERY_RESULT_BACKEND = "redis://localhost:6379/0"
 
 # Optional settings
 CELERY_ACCEPT_CONTENT = ["json"]

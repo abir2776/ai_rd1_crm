@@ -2,10 +2,12 @@ from rest_framework import serializers
 
 from cv_formatter.models import CVFormatterConfig
 from organizations.models import OrganizationPlatform
+from organizations.rest.serializers.organization_platform import MyPlatformSerializer
 
 
 class CVformatterConfigSerializer(serializers.ModelSerializer):
     platform_uid = serializers.CharField(write_only=True)
+    platform = MyPlatformSerializer(read_only=True)
 
     class Meta:
         model = CVFormatterConfig

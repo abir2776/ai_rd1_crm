@@ -6,5 +6,8 @@ from ..serializers.plan import PlanFeatureSerializer
 
 
 class PlanFeatureListView(ListAPIView):
-    queryset = PlanFeature.objects.filter()
     serializer_class = PlanFeatureSerializer
+
+    def get_queryset(self):
+        uid = self.kwargs.get("feature_uid")
+        return PlanFeature.objects.filter(feature__uid=uid)
