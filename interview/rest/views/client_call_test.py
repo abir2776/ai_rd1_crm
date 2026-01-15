@@ -25,8 +25,10 @@ class CallRequestCreateView(APIView):
         serializer.is_valid(raise_exception=True)
 
         data = serializer.validated_data
+        scheduled_at = None
+        if data["call_type"] == "SCHEDULE":
+            scheduled_at = data["scheduled_at"]
 
-        scheduled_at = data["scheduled_at"]
         call_request = CallRequest.objects.create(
             name=data["name"],
             phone=data["phone"],
