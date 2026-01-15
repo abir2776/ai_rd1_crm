@@ -37,8 +37,8 @@ app.conf.beat_schedule = {
         "task": "interview.tasks.ai_phone.initiate_all_interview",
         "schedule": crontab(
             minute="*/5",
-            hour="9-15",
-            day_of_week="5,6,0,1"
+            hour="9-16",  # 9 AM to 4 PM
+            day_of_week="1-5"  # Monday to Friday
         ),
     },
     # "format-cvs-every-3-minutes": {
