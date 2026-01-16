@@ -12,6 +12,8 @@ from interview.rest.serializers.client_call_test import (
     MeetingBookingSerializer,
 )
 from interview.tasks.ai_phone import initiate_call
+from interview.throttles import CallRequestIPThrottle
+from interview.utils import local_to_utc
 
 
 class CallRequestCreateView(APIView):
@@ -32,8 +34,8 @@ class CallRequestCreateView(APIView):
             phone=data["phone"],
             call_type=data["call_type"],
             scheduled_at=scheduled_at,
-            company_name=data["company_name"],
-            company_size=data["company_size"],
+            company_name = data["company_name"],
+            company_size= data["company_size"]
         )
 
         if call_request.call_type == CallRequest.CALL_NOW:
@@ -57,5 +59,5 @@ class MeetingBookingAPIView(ListCreateAPIView):
     serializer_class = MeetingBookingSerializer
     permission_classes = [AllowAny]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ["category_id"]
+    filterset_fields = ["status","scheduled_at"]
     queryset = MeetingBooking.objects.filter()
