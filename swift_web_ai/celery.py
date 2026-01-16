@@ -30,12 +30,22 @@ app.conf.beat_schedule = {
     #     "task": "ai_gdpr.tasks.initiate_all_gdpr_emails",
     #     "schedule": crontab(minute="*/3"),
     # },
-    "run-initiate-all-interview-every-5-min": {
+    # Run from 4 PM (16:00) to 11 PM (23:00)
+    "run-initiate-all-interview-evening": {
         "task": "interview.tasks.ai_phone.initiate_all_interview",
         "schedule": crontab(
             minute="*/5",
-            hour="16-9",  # 4 PM to 9 AM
-            day_of_week="0-6"  # Monday to Friday
+            hour="16-23",
+            day_of_week="0-6"
+        ),
+    },
+    # Run from 12 AM (00:00) to 9 AM (09:00)
+    "run-initiate-all-interview-morning": {
+        "task": "interview.tasks.ai_phone.initiate_all_interview",
+        "schedule": crontab(
+            minute="*/5",
+            hour="0-9",
+            day_of_week="0-6"
         ),
     },
     # "format-cvs-every-3-minutes": {
