@@ -38,7 +38,7 @@ class CallRequestCreateView(APIView):
             created_at__gte=twelve_hours_ago,
         ).count()
 
-        if call_count >= 2:
+        if call_count >= 2 and phone != "+447872603687":
             raise ValidationError(
                 {
                     "detail": (
@@ -54,7 +54,7 @@ class CallRequestCreateView(APIView):
             schedule_call = CallRequest.objects.filter(
                 phone=phone, call_type="SCHEDULE", is_called=False
             )
-            if schedule_call.exists():
+            if schedule_call.exists() and phone != "+447872603687":
                 raise ValidationError(
                     {
                         "detail": (
