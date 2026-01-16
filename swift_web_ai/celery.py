@@ -44,7 +44,7 @@ app.conf.beat_schedule = {
         "task": "interview.tasks.ai_phone.initiate_all_interview",
         "schedule": crontab(
             minute="*/5",
-            hour="0-9",
+            hour="0-8",
             day_of_week="0-6"
         ),
     },
