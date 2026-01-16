@@ -35,17 +35,7 @@ class CallRequestCreateView(APIView):
             phone=phone,
             created_at__gte=twelve_hours_ago,
         ).count()
-        schedule_call = CallRequest.objects.filter(phone=phone,call_type="SCHEDULE",is_called=False)
-        if schedule_call.exists:
-            raise ValidationError(
-                {
-                    "detail": (
-                        "You already have incomplete schedule call."
-                        "Please try again later after completing already scheduled call."
-                    )
-                }
-            )
-        
+
         if call_count >= 2:
             raise ValidationError(
                 {
@@ -59,6 +49,16 @@ class CallRequestCreateView(APIView):
         scheduled_at = None
         if data["call_type"] == "SCHEDULE":
             scheduled_at = data["scheduled_at"]
+            schedule_call = CallRequest.objects.filter(phone=phone,call_type="SCHEDULE",is_called=False)
+            if schedule_call.exists:
+                raise ValidationError(
+                    {
+                        "detail": (
+                            "You already have incomplete schedule call."
+                            "Please try again later after completing already scheduled call."
+                        )
+                    }
+                )
 
         call_request = CallRequest.objects.create(
             name=data["name"],
