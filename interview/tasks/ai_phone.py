@@ -20,18 +20,16 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech"
 
 
-def generate_welcome_audio(
-    organization_name: str, job_title: str, voice_id: str
-) -> str:
+def generate_welcome_audio(welcome_text: str, voice_id: str) -> str:
     """
     Generate welcome message audio using ElevenLabs TTS.
     Returns the URL of the saved audio file.
     """
-    welcome_text = (
-        f"Welcome to the {organization_name} Platform and thank you for your "
-        f"application for the {job_title} position. May I talk with you for "
-        f"some moments please?"
-    )
+    # welcome_text = (
+    #     f"Welcome to the {organization_name} Platform and thank you for your "
+    #     f"application for the {job_title} position. May I talk with you for "
+    #     f"some moments please?"
+    # )
 
     headers = {
         "Accept": "audio/mpeg",
@@ -303,11 +301,14 @@ def fetch_platform_candidates(config):
                     print(f"No applications link found for job: {job_title}")
                     continue
                 job_details = fetch_job_details(job_self_url, config)
-
+                welcome_text = (
+                    f"Welcome to the {organization_name} Platform and thank you for your "
+                    f"application for the {job_title} position. May I talk with you for "
+                    f"some moments please?"
+                )
                 # Generate welcome audio for this job
                 welcome_audio_url, welcome_text = generate_welcome_audio(
-                    organization_name=organization_name,
-                    job_title=job_title,
+                    welcome_text=welcome_text,
                     voice_id=config.voice_id,
                 )
 
@@ -458,6 +459,11 @@ def initiate_call(self, call_request_id):
     try:
         call = CallRequest.objects.get(id=call_request_id)
         print(f"Calling {call.phone} for {call.name}")
+        welcome_text = f"Hello {call.name}.Welcome to AI-RD1, our AI call platform that significantly reduces your business costs. Are you available to answer a few short questions? Please answer yes or no."
+        welcome_audio_url, welcome_text = generate_welcome_audio(
+            welcome_text=welcome_text,
+            voice_id="SQ1QAX1hsTZ1d6O0dCWA",
+        )
         payload = {
             "from_phone_number": "+447428941629",
             "call_request_id": call_request_id,
@@ -466,6 +472,7 @@ def initiate_call(self, call_request_id):
             "voice_id": "SQ1QAX1hsTZ1d6O0dCWA",
             "client_company_name": call.company_name,
             "client_company_size": call.company_size,
+            "welcome_message_audio_url": welcome_audio_url,
         }
         response = requests.post(
             f"{BASE_API_URL}/initiate-client-test-call",

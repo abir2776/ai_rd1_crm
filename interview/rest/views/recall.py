@@ -45,10 +45,14 @@ def retry_disconnected_candidate(request, interview_id):
                 candidate_phone = f"+{candidate_phone}"
         primary_questions = config.get_primary_questions()
         from interview.tasks import generate_welcome_audio
+        welcome_text = (
+            f"Welcome to the {interview.organization.name} Platform and thank you for your "
+            f"application for the {interview.job_title} position. May I talk with you for "
+            f"some moments please?"
+        )
 
         welcome_audio_url, welcome_text = generate_welcome_audio(
-            organization_name=interview.organization.name,
-            job_title=interview.job_title,
+            welcome_text=welcome_text,
             voice_id=config.voice_id,
         )
         make_interview_call.delay(
@@ -133,10 +137,13 @@ def retry_all_disconnected_candidates(request):
                         candidate_phone = f"+{candidate_phone}"
                 primary_questions = config.get_primary_questions()
                 from interview.tasks import generate_welcome_audio
-
+                welcome_text = (
+                    f"Welcome to the {interview.organization.name} Platform and thank you for your "
+                    f"application for the {interview.job_title} position. May I talk with you for "
+                    f"some moments please?"
+                )
                 welcome_audio_url, welcome_text = generate_welcome_audio(
-                    organization_name=interview.organization.name,
-                    job_title=interview.job_title,
+                    welcome_text=welcome_text,
                     voice_id=config.voice_id,
                 )
                 countdown = i * 120
