@@ -6,6 +6,8 @@ from interview.models import CallRequest, MeetingBooking
 
 class CallRequestSerializer(serializers.ModelSerializer):
     scheduled_at = serializers.DateTimeField(required=False)
+    company_name = serializers.CharField(required=True)
+    company_size = serializers.CharField(required=True)
 
     class Meta:
         model = CallRequest
