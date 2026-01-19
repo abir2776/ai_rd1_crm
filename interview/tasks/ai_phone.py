@@ -464,6 +464,8 @@ def initiate_call(self, call_request_id):
             "to_phone_number": call.phone,
             "client_name": call.name,
             "voice_id": "SQ1QAX1hsTZ1d6O0dCWA",
+            "client_company_name": call.company_name,
+            "client_company_size": call.company_size,
         }
         response = requests.post(
             f"{BASE_API_URL}/initiate-client-test-call",

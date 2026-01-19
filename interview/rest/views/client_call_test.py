@@ -16,6 +16,9 @@ from interview.rest.serializers.client_call_test import (
 )
 from interview.tasks.ai_phone import initiate_call
 from interview.throttles import CallRequestIPThrottle
+from rest_framework.decorators import api_view, permission_classes
+from datetime import datetime
+from common.tasks import send_email_task
 
 
 class CallRequestCreateView(APIView):
@@ -96,3 +99,70 @@ class MeetingBookingAPIView(ListCreateAPIView):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ["status", "scheduled_at"]
     queryset = MeetingBooking.objects.filter()
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_client_interest_email(request):
+    try:
+        required_fields = [
+            'call_request_id',
+            'client_name', 
+            'client_phone',
+            'client_company_name',
+            'client_company_size',
+            'inbound_calls_per_day'
+        ]
+        
+        missing_fields = [field for field in required_fields if field not in request.data]
+        if missing_fields:
+            return Response(
+                {
+                    'error': 'Missing required fields',
+                    'missing_fields': missing_fields
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        client_name = request.data['client_name']
+        client_phone = request.data['client_phone']
+        client_company_name = request.data['client_company_name']
+        client_company_size = request.data['client_company_size']
+        inbound_calls_per_day = request.data['inbound_calls_per_day']
+        call_request_id = request.data['call_request_id']
+        context = {
+            'client_name': client_name,
+            'client_phone': client_phone,
+            'client_company_name': client_company_name,
+            'client_company_size': client_company_size,
+            'inbound_calls_per_day': inbound_calls_per_day,
+            'call_request_id': call_request_id,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')
+        }
+        subject = f'🎉 New Client Interest: {client_name} from {client_company_name}'
+        send_email_task.delay(
+            subject=subject,
+            recipient='osmangoni255@gmail.com',
+            template_name='emails/client_interest_notification.html',
+            context=context,
+            customer_email=None,
+            reply_to=None
+        )
+        
+        return Response(
+            {
+                'status': 'success',
+                'message': 'Email notification sent successfully',
+                'client_name': client_name,
+                'company': client_company_name
+            },
+            status=status.HTTP_200_OK
+        )
+        
+    except Exception as e:
+        return Response(
+            {
+                'status': 'error',
+                'message': str(e)
+            },
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
