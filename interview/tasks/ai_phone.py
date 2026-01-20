@@ -68,7 +68,7 @@ def generate_welcome_audio(welcome_text: str, voice_id: str) -> str:
         # If using S3 or similar, this returns full URL
         # If using local storage, you may need to prepend your domain
         if not audio_url.startswith("http"):
-            audio_url = f"https://api.swiftwave.ai{audio_url}"
+            audio_url = f"{audio_url}"
 
         print(f"Generated welcome audio: {audio_url}")
         return audio_url, welcome_text

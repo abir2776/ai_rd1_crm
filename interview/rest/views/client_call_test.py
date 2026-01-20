@@ -72,6 +72,7 @@ class CallRequestCreateView(APIView):
         call_request = CallRequest.objects.create(
             name=data["name"],
             phone=phone,
+            email = data["email"],
             call_type=data["call_type"],
             scheduled_at=scheduled_at,
             company_name=data["company_name"],
