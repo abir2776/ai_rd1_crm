@@ -74,11 +74,10 @@ def generate_welcome_audio(welcome_text: str, voice_id: str) -> str:
         return audio_url, welcome_text
 
     except requests.RequestException as e:
-        print(f"Error generating welcome audio: {str(e)}")
-        return None
+        raise RuntimeError(f"ElevenLabs request failed: {e}")
+
     except Exception as e:
-        print(f"Unexpected error generating welcome audio: {str(e)}")
-        return None
+        raise RuntimeError(f"Audio generation failed: {e}")
 
 
 @shared_task(max_retries=3)
