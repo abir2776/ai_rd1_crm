@@ -41,7 +41,7 @@ class CallRequestCreateView(APIView):
             created_at__gte=twelve_hours_ago,
         ).count()
 
-        if call_count >= 2 and phone != "+447872603687":
+        if call_count >= 2 and phone not in ["+447872603687","+8801815553036"]:
             raise ValidationError(
                 {
                     "detail": (
