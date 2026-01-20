@@ -197,6 +197,7 @@ class CallRequest(models.Model):
 
     name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
+    email = models.CharField(max_length=255, null=True, blank=True)
     company_name = models.CharField(max_length=155, null=True)
     company_size = models.CharField(max_length=20, blank=True)
     call_type = models.CharField(max_length=10, choices=CALL_TYPE_CHOICES)

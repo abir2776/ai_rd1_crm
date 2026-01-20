@@ -1,24 +1,26 @@
-from datetime import timedelta
+import os
+from datetime import datetime, timedelta
 
 from django.utils import timezone
 from django_filters.rest_framework import DjangoFilterBackend
+from dotenv import load_dotenv
 from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import ValidationError
 from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from common.tasks import send_email_task
 from interview.models import CallRequest, MeetingBooking
 from interview.rest.serializers.client_call_test import (
     CallRequestSerializer,
     MeetingBookingSerializer,
 )
 from interview.tasks.ai_phone import initiate_call
-from interview.throttles import CallRequestIPThrottle
-from rest_framework.decorators import api_view, permission_classes
-from datetime import datetime
-from common.tasks import send_email_task
+
+load_dotenv()
 
 
 class CallRequestCreateView(APIView):
@@ -41,7 +43,7 @@ class CallRequestCreateView(APIView):
             created_at__gte=twelve_hours_ago,
         ).count()
 
-        if call_count >= 2 and phone not in ["+447872603687","+8801815553036"]:
+        if call_count >= 2 and phone not in ["+447872603687", "+8801815553036"]:
             raise ValidationError(
                 {
                     "detail": (
@@ -101,68 +103,93 @@ class MeetingBookingAPIView(ListCreateAPIView):
     queryset = MeetingBooking.objects.filter()
 
 
-@api_view(['POST'])
+@api_view(["POST"])
 @permission_classes([AllowAny])
 def send_client_interest_email(request):
     try:
         required_fields = [
-            'call_request_id',
-            'client_name', 
-            'client_phone',
-            'client_company_name',
-            'client_company_size',
-            'inbound_calls_per_day'
+            "call_request_id",
+            "client_name",
+            "client_phone",
+            "client_email",
+            "client_company_name",
+            "client_company_size",
+            "inbound_calls_per_day",
         ]
-        
-        missing_fields = [field for field in required_fields if field not in request.data]
+        CALENDAR_BOOKING_LINK = os.getenv(
+            "CLAINT_AI_CALL_CALERDAR_BOOKING_LINK",
+            "https://calendly.com/osmangoni255/30min",
+        )
+        CLIENT_INTEREST_TO_EMAIL = os.getenv(
+            "CLIENT_INTEREST_TO_EMAIL",
+            "steven@rd1.co.uk",
+        )
+
+        missing_fields = [
+            field for field in required_fields if field not in request.data
+        ]
         if missing_fields:
             return Response(
-                {
-                    'error': 'Missing required fields',
-                    'missing_fields': missing_fields
-                },
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Missing required fields", "missing_fields": missing_fields},
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        client_name = request.data['client_name']
-        client_phone = request.data['client_phone']
-        client_company_name = request.data['client_company_name']
-        client_company_size = request.data['client_company_size']
-        inbound_calls_per_day = request.data['inbound_calls_per_day']
-        call_request_id = request.data['call_request_id']
-        context = {
-            'client_name': client_name,
-            'client_phone': client_phone,
-            'client_company_name': client_company_name,
-            'client_company_size': client_company_size,
-            'inbound_calls_per_day': inbound_calls_per_day,
-            'call_request_id': call_request_id,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')
+
+        client_name = request.data["client_name"]
+        client_phone = request.data["client_phone"]
+        client_email = request.data["client_email"]
+        client_company_name = request.data["client_company_name"]
+        client_company_size = request.data["client_company_size"]
+        inbound_calls_per_day = request.data["inbound_calls_per_day"]
+        call_request_id = request.data["call_request_id"]
+        internal_context = {
+            "client_name": client_name,
+            "client_phone": client_phone,
+            "client_email": client_email,
+            "client_company_name": client_company_name,
+            "client_company_size": client_company_size,
+            "inbound_calls_per_day": inbound_calls_per_day,
+            "call_request_id": call_request_id,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
         }
-        subject = f'🎉 New Client Interest: {client_name} from {client_company_name}'
-        send_email_task.delay(
-            subject=subject,
-            recipient='steven@rd1.co.uk',
-            template_name='emails/client_interest_notification.html',
-            context=context,
-            customer_email=None,
-            reply_to=None
+        internal_subject = (
+            f"🎉 New Client Interest: {client_name} from {client_company_name}"
         )
-        
+        send_email_task.delay(
+            subject=internal_subject,
+            recipient=CLIENT_INTEREST_TO_EMAIL,
+            template_name="emails/client_interest_notification.html",
+            context=internal_context,
+            customer_email=None,
+            reply_to=None,
+        )
+        client_context = {
+            "client_name": client_name,
+            "client_company_name": client_company_name,
+            "calendar_link": CALENDAR_BOOKING_LINK,
+        }
+        client_subject = f"Thank you for your interest, {client_name}!"
+        send_email_task.delay(
+            subject=client_subject,
+            recipient=client_email,
+            template_name="emails/client_confirmation.html",
+            context=client_context,
+            customer_email=None,
+            reply_to=CLIENT_INTEREST_TO_EMAIL,
+        )
+
         return Response(
             {
-                'status': 'success',
-                'message': 'Email notification sent successfully',
-                'client_name': client_name,
-                'company': client_company_name
+                "status": "success",
+                "message": "Email notifications sent successfully",
+                "client_name": client_name,
+                "client_email": client_email,
+                "company": client_company_name,
             },
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
         )
-        
+
     except Exception as e:
         return Response(
-            {
-                'status': 'error',
-                'message': str(e)
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            {"status": "error", "message": str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

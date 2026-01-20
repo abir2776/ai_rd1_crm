@@ -475,6 +475,7 @@ def initiate_call(self, call_request_id):
             "client_company_name": call.company_name,
             "client_company_size": call.company_size,
             "welcome_message_audio_url": welcome_audio_url,
+            "email": call.email,
         }
         response = requests.post(
             f"{BASE_API_URL}/initiate-client-test-call",
