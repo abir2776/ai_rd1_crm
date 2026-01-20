@@ -40,7 +40,7 @@ def generate_welcome_audio(welcome_text: str, voice_id: str) -> str:
 
     payload = {
         "text": welcome_text,
-        "model_id": "eleven_v3",
+        "model_id": "eleven_turbo_v2",
         "voice_settings": {
             "stability": 0.5,
             "similarity_boost": 0.5,
