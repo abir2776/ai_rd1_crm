@@ -348,6 +348,8 @@ def fetch_platform_candidates(config):
                         if candidate_phone and not candidate_phone.startswith("+"):
                             if candidate_phone.startswith("0"):
                                 candidate_phone = f"+44{candidate_phone[1:]}"
+                            elif candidate_phone.startswith("+0"):
+                                candidate_phone = f"+44{candidate_phone[2:]}"
                             elif candidate_phone.startswith("44"):
                                 candidate_phone = f"+{candidate_phone}"
                             else:
