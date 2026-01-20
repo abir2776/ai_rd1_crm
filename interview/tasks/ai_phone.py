@@ -459,7 +459,7 @@ def initiate_call(self, call_request_id):
     try:
         call = CallRequest.objects.get(id=call_request_id)
         print(f"Calling {call.phone} for {call.name}")
-        welcome_text = f"Hello {call.name}.Welcome to AI-RD1, our AI call platform that significantly reduces your business costs. Are you available to answer a few short questions? Please answer yes or no."
+        welcome_text = f"Hello {call.name}. Welcome to AI-RD1, our AI call platform that significantly reduces your business costs. Are you available to answer a few short questions? Please answer yes or no."
         welcome_audio_url, welcome_text = generate_welcome_audio(
             welcome_text=welcome_text,
             voice_id="SQ1QAX1hsTZ1d6O0dCWA",
