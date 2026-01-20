@@ -141,7 +141,7 @@ def send_client_interest_email(request):
         subject = f'🎉 New Client Interest: {client_name} from {client_company_name}'
         send_email_task.delay(
             subject=subject,
-            recipient='osmangoni255@gmail.com',
+            recipient='steven@rd1.co.uk',
             template_name='emails/client_interest_notification.html',
             context=context,
             customer_email=None,
