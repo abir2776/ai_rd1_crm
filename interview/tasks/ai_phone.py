@@ -8,6 +8,7 @@ from celery import shared_task
 from django.core.files.base import ContentFile
 from dotenv import load_dotenv
 
+from common.choices import Status
 from interview.models import AIPhoneCallConfig, CallRequest, InterviewTaken
 from organizations.models import Organization
 from subscription.choices import FeatureType
@@ -448,6 +449,7 @@ def initiate_all_interview():
         organization_id__in=organization_ids,
         available_limit__gt=0,
         plan_feature__feature__type=FeatureType.AI_CALL,
+        status=Status.ACTIVE,
     ).values_list("organization_id", flat=True)
     for organization_id in subscribed_organization_ids:
         print(f"Initiated bulk interview call for organization_{organization_id}")
