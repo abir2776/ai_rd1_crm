@@ -4,6 +4,7 @@ from common.choices import Status
 from common.models import BaseModelWithUID
 from organizations.models import Organization, OrganizationPlatform
 from phone_number.models import TwilioPhoneNumber
+from phonenumber_field.modelfields import PhoneNumberField
 
 from .choices import InterviewType, ProgressStatus
 
@@ -196,7 +197,7 @@ class CallRequest(models.Model):
     ]
 
     name = models.CharField(max_length=100)
-    phone = models.CharField(max_length=20)
+    phone = PhoneNumberField()
     email = models.CharField(max_length=255, null=True, blank=True)
     company_name = models.CharField(max_length=155, null=True)
     company_size = models.CharField(max_length=20, blank=True)
