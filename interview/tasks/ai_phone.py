@@ -8,8 +8,10 @@ from celery import shared_task
 from django.core.files.base import ContentFile
 from dotenv import load_dotenv
 
-from interview.models import AIPhoneCallConfig
+from common.choices import Status
+from interview.models import AIPhoneCallConfig, CallRequest, InterviewTaken
 from organizations.models import Organization
+from subscription.choices import FeatureType
 from subscription.models import Subscription
 
 load_dotenv()
@@ -19,18 +21,16 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1/text-to-speech"
 
 
-def generate_welcome_audio(
-    organization_name: str, job_title: str, voice_id: str
-) -> str:
+def generate_welcome_audio(welcome_text: str, voice_id: str) -> str:
     """
     Generate welcome message audio using ElevenLabs TTS.
     Returns the URL of the saved audio file.
     """
-    welcome_text = (
-        f"Welcome to the {organization_name} Platform and thank you for your "
-        f"application for the {job_title} position. May I talk with you for "
-        f"some moments please?"
-    )
+    # welcome_text = (
+    #     f"Welcome to the {organization_name} Platform and thank you for your "
+    #     f"application for the {job_title} position. May I talk with you for "
+    #     f"some moments please?"
+    # )
 
     headers = {
         "Accept": "audio/mpeg",
@@ -40,7 +40,7 @@ def generate_welcome_audio(
 
     payload = {
         "text": welcome_text,
-        "model_id": "eleven_v3",
+        "model_id": "eleven_turbo_v2",
         "voice_settings": {
             "stability": 0.5,
             "similarity_boost": 0.5,
@@ -74,11 +74,10 @@ def generate_welcome_audio(
         return audio_url, welcome_text
 
     except requests.RequestException as e:
-        print(f"Error generating welcome audio: {str(e)}")
-        return None
+        raise RuntimeError(f"ElevenLabs request failed: {e}")
+
     except Exception as e:
-        print(f"Unexpected error generating welcome audio: {str(e)}")
-        return None
+        raise RuntimeError(f"Audio generation failed: {e}")
 
 
 @shared_task(max_retries=3)
@@ -98,34 +97,50 @@ def make_interview_call(
     welcome_message_audio_url: str = None,
     welcome_text: str = None,
     voice_id: str = "SQ1QAX1hsTZ1d6O0dCWA",
+    candidate_email: str = None,
+    is_retry: bool = False,
 ):
     try:
-        payload = {
-            "to_phone_number": to_number,
-            "from_phone_number": from_phone_number,
-            "organization_id": organization_id,
-            "application_id": application_id,
-            "candidate_id": candidate_id,
-            "job_title": job_title,
-            "job_id": job_ad_id,
-            "job_details": job_details or {},
-            "candidate_first_name": candidate_name,
-            "interview_type": interview_type,
-            "primary_questions": primary_questions,
-            "should_end_if_primary_question_failed": should_end_if_primary_question_failed,
-            "welcome_message_audio_url": welcome_message_audio_url,
-            "welcome_text": welcome_text,
-            "voice_id": voice_id,
-        }
+        is_taken = False
+        if not is_retry:
+            is_taken = InterviewTaken.objects.filter(
+                organization_id=organization_id,
+                candidate_id=candidate_id,
+                application_id=application_id,
+            ).exists()
+        if not is_taken:
+            payload = {
+                "to_phone_number": to_number,
+                "from_phone_number": from_phone_number,
+                "organization_id": organization_id,
+                "application_id": application_id,
+                "candidate_id": candidate_id,
+                "job_title": job_title,
+                "job_id": job_ad_id,
+                "job_details": job_details or {},
+                "candidate_first_name": candidate_name,
+                "interview_type": interview_type,
+                "primary_questions": primary_questions,
+                "should_end_if_primary_question_failed": should_end_if_primary_question_failed,
+                "welcome_message_audio_url": welcome_message_audio_url,
+                "welcome_text": welcome_text,
+                "voice_id": voice_id,
+                "candidate_email": candidate_email,
+            }
 
-        response = requests.post(
-            f"{BASE_API_URL}/initiate-call",
-            json=payload,
-            timeout=30,
-        )
-        response.raise_for_status()
-        print("Call initiated successfully")
-        update_application_status_after_call(organization_id, application_id)
+            response = requests.post(
+                f"{BASE_API_URL}/initiate-call",
+                json=payload,
+                timeout=30,
+            )
+            response.raise_for_status()
+            print("Call initiated successfully")
+            update_application_status_after_call(organization_id, application_id)
+
+        else:
+            print(
+                f"Already called for an interview candidate_id:{candidate_id}, application:{application_id}"
+            )
 
     except Exception as exc:
         print(f"Error making call to {to_number}: {str(exc)}")
@@ -168,10 +183,14 @@ def fetch_job_details(job_self_url: str, config):
         }
 
 
-def update_application_status_after_call(organization_id: int, application_id: int):
+@shared_task
+def update_application_status_after_call(
+    organization_id: int, application_id: int, status_id=None
+):
     try:
         config = AIPhoneCallConfig.objects.get(organization_id=organization_id)
-        status_id = getattr(config, "status_when_call_is_placed", None)
+        if not status_id:
+            status_id = getattr(config, "status_when_call_is_placed", None)
 
         if not status_id:
             print(
@@ -179,7 +198,7 @@ def update_application_status_after_call(organization_id: int, application_id: i
             )
             return
 
-        jobadder_api_url = f"{config.platform.base_url}applications/{application_id}"
+        jobadder_api_url = f"{config.platform.base_url}/applications/{application_id}"
 
         access_token = config.platform.access_token
         headers = {
@@ -273,23 +292,23 @@ def fetch_platform_candidates(config):
         print(f"Found {len(jobs_data.get('items', []))} live jobs")
         for job in jobs_data.get("items", []):
             time.sleep(0.5)
-            temp = False
             if job.get("state") == config.jobad_status_for_calling:
                 ad_id = job.get("adId")
                 job_title = job.get("title")
                 job_self_url = job.get("links", {}).get("self")
                 applications_url = job.get("links", {}).get("applications")
-                if ad_id != 650863:
-                    continue
                 if not applications_url:
                     print(f"No applications link found for job: {job_title}")
                     continue
                 job_details = fetch_job_details(job_self_url, config)
-
+                welcome_text = (
+                    f"Welcome to the {organization_name} Platform and thank you for your "
+                    f"application for the {job_title} position. May I talk with you for "
+                    f"some moments please?"
+                )
                 # Generate welcome audio for this job
                 welcome_audio_url, welcome_text = generate_welcome_audio(
-                    organization_name=organization_name,
-                    job_title=job_title,
+                    welcome_text=welcome_text,
                     voice_id=config.voice_id,
                 )
 
@@ -318,25 +337,36 @@ def fetch_platform_candidates(config):
                         candidate_id = candidate.get("candidateId")
                         candidate_first_name = candidate.get("firstName", "")
                         candidate_last_name = candidate.get("lastName", "")
+                        candidate_email = candidate.get("email", "")
                         candidate_phone = candidate.get("mobile", "")
                         updated_at = application.get("updatedAt", "")
                         status = application.get("status")
 
-                        if candidate_phone and not candidate_phone.startswith("+"):
-                            candidate_phone = f"+{candidate_phone}"
+                        if len(candidate_phone) == 0:
+                            candidate_phone = candidate.get("phone", "")
+
+                        if candidate_phone and not candidate_phone.startswith("+44"):
+                            if candidate_phone.startswith("0"):
+                                candidate_phone = f"+44{candidate_phone[1:]}"
+                            elif candidate_phone.startswith("+0"):
+                                candidate_phone = f"+44{candidate_phone[2:]}"
+                            elif candidate_phone.startswith("44"):
+                                candidate_phone = f"+{candidate_phone}"
 
                         if (
                             status.get("statusId")
                             == config.application_status_for_calling
                             and has_enough_time_passed(updated_at, waiting_duration)
+                            and len(candidate_phone) > 0
                         ):
                             candidate_data = {
-                                "to_number": os.getenv("TEST_PHONE_NUMBER"),
+                                "to_number": candidate_phone,
                                 "from_phone_number": str(config.phone.phone_number),
                                 "organization_id": config.organization_id,
                                 "application_id": application_id,
                                 "candidate_id": candidate_id,
-                                "candidate_name": candidate_first_name,
+                                "candidate_name": f"{candidate_first_name} {candidate_last_name}",
+                                "candidate_email": candidate_email,
                                 "job_title": job_title,
                                 "job_ad_id": ad_id,
                                 "job_details": job_details,
@@ -352,8 +382,6 @@ def fetch_platform_candidates(config):
                             print(
                                 f"Added candidate: {candidate_first_name} {candidate_last_name} for job: {job_title}"
                             )
-                            temp = True
-                            break
                         elif (
                             job.get("state") == config.jobad_status_for_calling
                             and application.get("statusId")
@@ -363,8 +391,6 @@ def fetch_platform_candidates(config):
                                 f"Skipped candidate: {candidate_first_name} {candidate_last_name} - "
                                 f"waiting period not elapsed (updated: {updated_at})"
                             )
-                    if temp:
-                        break
 
                 except Exception as e:
                     print(f"Error fetching applications for job {job_title}: {str(e)}")
@@ -392,7 +418,6 @@ def bulk_interview_calls(organization_id: int = None):
 
     for i, candidate in enumerate(candidates):
         countdown = i * 120
-
         make_interview_call.apply_async(
             args=[
                 candidate["to_number"],
@@ -410,6 +435,7 @@ def bulk_interview_calls(organization_id: int = None):
                 candidate.get("welcome_message_audio_url"),
                 candidate.get("welcome_text"),
                 candidate.get("voice_id"),
+                candidate.get("candidate_email"),
             ],
             countdown=countdown,
         )
@@ -419,8 +445,49 @@ def bulk_interview_calls(organization_id: int = None):
 def initiate_all_interview():
     organization_ids = Organization.objects.filter().values_list("id", flat=True)
     subscribed_organization_ids = Subscription.objects.filter(
-        organization_id__in=organization_ids, available_limit__gt=0
+        organization_id__in=organization_ids,
+        available_limit__gt=0,
+        plan_feature__feature__type=FeatureType.AI_CALL,
+        status=Status.ACTIVE,
     ).values_list("organization_id", flat=True)
     for organization_id in subscribed_organization_ids:
         print(f"Initiated bulk interview call for organization_{organization_id}")
         bulk_interview_calls.delay(organization_id)
+
+
+@shared_task(bind=True, max_retries=3)
+def initiate_call(self, call_request_id):
+    try:
+        call = CallRequest.objects.get(id=call_request_id)
+        print(f"Calling {call.phone} for {call.name}")
+        welcome_text = f"Hello {call.name}. Welcome to AI-RD1, our AI call platform that significantly reduces your business costs. Are you available to answer a few short questions? Please answer yes or no."
+        welcome_audio_url, welcome_text = generate_welcome_audio(
+            welcome_text=welcome_text,
+            voice_id="SQ1QAX1hsTZ1d6O0dCWA",
+        )
+        payload = {
+            "from_phone_number": "+447428941629",
+            "call_request_id": call_request_id,
+            "to_phone_number": str(call.phone),
+            "client_name": call.name,
+            "voice_id": "SQ1QAX1hsTZ1d6O0dCWA",
+            "client_company_name": call.company_name,
+            "client_company_size": call.company_size,
+            "welcome_message_audio_url": welcome_audio_url,
+            "email": call.email,
+        }
+        response = requests.post(
+            f"{BASE_API_URL}/initiate-client-test-call",
+            json=payload,
+            timeout=30,
+        )
+        response.raise_for_status()
+        print("Call initiated successfully")
+        call.is_called = True
+        call.save(update_fields=["is_called"])
+        return "Call completed"
+
+    except CallRequest.DoesNotExist:
+        return "Invalid Call Request"
+    except Exception as e:
+        self.retry(exc=e, countdown=30)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from interview.models import InterviewConversation
+from interview.models import InterviewCallConversation
 
 
 class ConversationSaveSerializer(serializers.Serializer):
@@ -14,9 +14,12 @@ class ConversationSaveSerializer(serializers.Serializer):
     message_count = serializers.IntegerField()
     started_at = serializers.DateTimeField()
     ended_at = serializers.DateTimeField()
+    candidate_name = serializers.CharField()
+    candidate_email = serializers.CharField()
+    candidate_phone = serializers.CharField()
 
 
-class InterviewConversationSerializer(serializers.ModelSerializer):
+class InterviewCallConversationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = InterviewConversation
+        model = InterviewCallConversation
         fields = "__all__"

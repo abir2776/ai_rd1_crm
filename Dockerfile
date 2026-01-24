@@ -1,54 +1,70 @@
-# Multi-stage build for production optimization
-FROM python:3.13-slim AS base
+# Base image - Use Python 3.12 for better stability
+FROM python:3.12-slim AS base
 
+# Environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies including WeasyPrint requirements
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client \
-    libpq-dev \
-    gcc \
-    libmagic1 \
-    # WeasyPrint dependencies
-    libpango-1.0-0 \
-    libpangocairo-1.0-0 \
-    libgdk-pixbuf-2.0-0 \
-    libffi-dev \
-    libcairo2 \
-    libglib2.0-0 \
-    shared-mime-info \
-    # PDF text extraction dependencies
-    poppler-utils \
-    # OCR dependencies (if using pytesseract)
-    tesseract-ocr \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
-
+# Set working directory
 WORKDIR /app
 
-# Create non-root user FIRST
+# Install system dependencies in stages for better error detection
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        apt-utils \
+        ca-certificates \
+        gnupg \
+        dirmngr \
+        wget && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        libffi-dev \
+        libpq-dev \
+        postgresql-client && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        libmagic1 \
+        libpango-1.0-0 \
+        libpangocairo-1.0-0 \
+        libgdk-pixbuf-2.0-0 \
+        libcairo2 \
+        libglib2.0-0 \
+        shared-mime-info \
+        poppler-utils \
+        tesseract-ocr && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create non-root user
 RUN useradd -m -u 1000 appuser
 
-# Install Python dependencies
+# Copy and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy project
+# Copy project files
 COPY --chown=appuser:appuser . .
 
-# Create media + static + celerybeat + PDF output directories with correct ownership
-RUN mkdir -p /app/media /app/static /app/celerybeat /app/formatted_pdfs /app/resume_candidates && \
+# Create directories and set permissions
+RUN mkdir -p media static celerybeat formatted_pdfs resume_candidates && \
     chown -R appuser:appuser /app
 
 # Switch to non-root user
 USER appuser
 
-# Collect static (ignore errors)
+# Collect static files
 RUN python manage.py collectstatic --noinput || true
 
+# Expose port
 EXPOSE 8000
 
+# Default command
 CMD ["gunicorn", "swift_web_ai.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "4"]

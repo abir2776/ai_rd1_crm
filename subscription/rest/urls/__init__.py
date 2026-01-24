@@ -4,4 +4,5 @@ urlpatterns = [
     path("", include("subscription.rest.urls.subscription")),
     path("features/", include("subscription.rest.urls.feature")),
     path("plan/", include("subscription.rest.urls.plan")),
+    path("category/", include("subscription.rest.urls.category")),
 ]

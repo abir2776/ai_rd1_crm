@@ -1,6 +1,3 @@
-import requests
-from django.conf import settings
-from django.core.files.base import ContentFile
 from django.db import transaction
 from rest_framework import serializers
 
@@ -9,16 +6,11 @@ from interview.models import (
     PrimaryQuestion,
     QuestionConfigConnection,
 )
+from interview.rest.serializers.common import PrimaryQuestionSerializer
 from organizations.models import OrganizationPlatform, Platform
 from organizations.rest.serializers.organization_platform import MyPlatformSerializer
 from phone_number.models import TwilioPhoneNumber
 from phone_number.rest.serializers.phone_numbers import PhoneNumberSerializer
-
-
-class PrimaryQuestionSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PrimaryQuestion
-        fields = "__all__"
 
 
 class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
@@ -106,7 +98,7 @@ class AIPhoneCallConfigSerializer(serializers.ModelSerializer):
         primary_question_uids = validated_data.pop("primary_question_inputs", None)
 
         if platform_uid:
-            platform = Platform.objects.filter(uid=platform_uid).first()
+            platform = OrganizationPlatform.objects.filter(uid=platform_uid).first()
             if not platform:
                 raise serializers.ValidationError(
                     {"platform_uid": "Invalid platform UID"}

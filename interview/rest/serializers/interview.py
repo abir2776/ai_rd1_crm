@@ -1,17 +1,35 @@
-import requests
 from rest_framework import serializers
-from django.conf import settings
-from interview.models import InterviewTaken, AIPhoneCallConfig
+
+from interview.models import (
+    AIPhoneCallConfig,
+    InterviewCallConversation,
+    InterviewTaken,
+)
+from interview.tasks.ai_phone import update_application_status_after_call
+from interview.tasks.ai_sms import send_sms_message
 from organizations.models import Organization
+
+
+class InterviewCallConversationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InterviewCallConversation
+        fields = "__all__"
 
 
 class InterviewTakenSerializer(serializers.ModelSerializer):
     organization_id = serializers.IntegerField(write_only=True, required=False)
+    interview_data = serializers.SerializerMethodField()
 
     class Meta:
         model = InterviewTaken
         fields = "__all__"
         read_only_fields = ["organization"]
+
+    def get_interview_data(self, _object):
+        data = InterviewCallConversation.objects.filter(interview_id=_object.id).first()
+        if data:
+            return InterviewCallConversationSerializer(data).data
+        return {}
 
     def create(self, validated_data):
         organization_id = validated_data.pop("organization_id")
@@ -29,13 +47,14 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"details": "No config found for this organization."}
             )
+
         status = validated_data.get("ai_decision")
         application_id = validated_data.get("application_id")
         interview = InterviewTaken.objects.create(
             organization=organization, **validated_data
         )
+
         if application_id:
-            jobadder_api_url = f"{config.platform.base_url}/{application_id}"
             if status == "successful":
                 status_id = config.status_for_successful_call
             elif status == "unsuccessful":
@@ -44,20 +63,16 @@ class InterviewTakenSerializer(serializers.ModelSerializer):
                 status_id = None
 
             if status_id:
-                headers = {
-                    "Authorization": f"Bearer {config.platform.access_token}",
-                    "Content-Type": "application/json",
-                }
-                payload = {"statusId": status_id}
-
-                try:
-                    response = requests.put(
-                        jobadder_api_url, json=payload, headers=headers, timeout=10
-                    )
-                    response.raise_for_status()
-                except requests.RequestException as e:
-                    raise serializers.ValidationError(
-                        {"jobadder_api": f"Failed to update JobAdder status: {str(e)}"}
-                    )
+                update_application_status_after_call.delay(
+                    organization_id, application_id, status_id
+                )
+            if status == "successful" and config.sent_document_upload_link:
+                message = f"Please Upload your updated documents in this link: {config.document_upload_link}"
+                send_sms_message.delay(
+                    validated_data["candidate_phone"],
+                    str(config.phone.phone_number),
+                    message,
+                    organization_id,
+                )
 
         return interview

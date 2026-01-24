@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>New Client Interest - AI-RD1 Call</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f4f4f4;">
+    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f4f4f4;">
+        <tr>
+            <td style="padding: 40px 20px;">
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; border-radius: 8px 8px 0 0;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: bold;">
+                                🎉 New Client Interest!
+                            </h1>
+                            <p style="margin: 10px 0 0 0; color: #ffffff; font-size: 16px; opacity: 0.9;">
+                                AIRD1 Call Qualification System
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Alert Banner -->
+                    <tr>
+                        <td style="padding: 20px 30px; background-color: #fff3cd; border-left: 4px solid #ffc107;">
+                            <p style="margin: 0; color: #856404; font-size: 14px;">
+                                <strong>⚠️ Action Required:</strong> A potential client has expressed interest in our AI call solution. Please follow up within 24 hours.
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p style="margin: 0 0 20px 0; color: #333333; font-size: 16px; line-height: 1.5;">
+                                Great news! We've received a new qualified lead from our AI qualification call system. Here are the details:
+                            </p>
+                            
+                            <!-- Client Details Card -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #f8f9fa; border-radius: 6px; padding: 20px; margin-bottom: 20px;">
+                                <tr>
+                                    <td style="padding: 0;">
+                                        <h2 style="margin: 0 0 15px 0; color: #667eea; font-size: 20px; border-bottom: 2px solid #667eea; padding-bottom: 10px;">
+                                            👤 Client Information
+                                        </h2>
+                                        
+                                        <!-- Name -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 12px;">
+                                            <tr>
+                                                <td width="40%" style="padding: 8px 0; color: #666666; font-size: 14px; font-weight: bold;">
+                                                    Full Name:
+                                                </td>
+                                                <td style="padding: 8px 0; color: #333333; font-size: 14px;">
+                                                    {{ client_name }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Phone -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 12px;">
+                                            <tr>
+                                                <td width="40%" style="padding: 8px 0; color: #666666; font-size: 14px; font-weight: bold;">
+                                                    📱 Phone Number:
+                                                </td>
+                                                <td style="padding: 8px 0;">
+                                                    <a href="tel:{{ client_phone }}" style="color: #667eea; font-size: 14px; text-decoration: none; font-weight: bold;">
+                                                        {{ client_phone }}
+                                                    </a>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Company Name -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 12px;">
+                                            <tr>
+                                                <td width="40%" style="padding: 8px 0; color: #666666; font-size: 14px; font-weight: bold;">
+                                                    🏢 Company Name:
+                                                </td>
+                                                <td style="padding: 8px 0; color: #333333; font-size: 14px;">
+                                                    {{ client_company_name }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Company Size -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 12px;">
+                                            <tr>
+                                                <td width="40%" style="padding: 8px 0; color: #666666; font-size: 14px; font-weight: bold;">
+                                                    👥 Company Size:
+                                                </td>
+                                                <td style="padding: 8px 0; color: #333333; font-size: 14px;">
+                                                    {{ client_company_size }}
+                                                </td>
+                                            </tr>
+                                        </table>
+                                        
+                                        <!-- Inbound Calls -->
+                                        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                                            <tr>
+                                                <td width="40%" style="padding: 8px 0; color: #666666; font-size: 14px; font-weight: bold;">
+                                                    📞 Inbound Calls/Day:
+                                                </td>
+                                                <td style="padding: 8px 0;">
+                                                    <span style="background-color: #667eea; color: #ffffff; padding: 4px 12px; border-radius: 12px; font-size: 13px; font-weight: bold;">
+                                                        {{ inbound_calls_per_day }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Qualification Status -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #d4edda; border-radius: 6px; padding: 15px; margin-bottom: 20px; border-left: 4px solid #28a745;">
+                                <tr>
+                                    <td>
+                                        <p style="margin: 0; color: #155724; font-size: 14px;">
+                                            <strong>✅ Qualification Status:</strong> This client has successfully completed the AI qualification call and expressed interest in learning more about our solution.
+                                        </p>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- CTA Button -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin: 25px 0;">
+                                <tr>
+                                    <td align="center">
+                                        <a href="tel:{{ client_phone }}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                            📞 Call Client Now
+                                        </a>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <!-- Next Steps -->
+                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background-color: #e7f3ff; border-radius: 6px; padding: 20px; margin-top: 20px;">
+                                <tr>
+                                    <td>
+                                        <h3 style="margin: 0 0 15px 0; color: #0066cc; font-size: 18px;">
+                                            📋 Recommended Next Steps:
+                                        </h3>
+                                        <ol style="margin: 0; padding-left: 20px; color: #333333; font-size: 14px; line-height: 1.8;">
+                                            <li>Review the client's company and call volume</li>
+                                            <li>Prepare a customized pitch based on their needs</li>
+                                            <li>Contact the client within 24 hours</li>
+                                            <li>Schedule a demo of the AI call solution</li>
+                                            <li>Discuss pricing and implementation timeline</li>
+                                        </ol>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="padding: 30px; background-color: #f8f9fa; text-align: center; border-radius: 0 0 8px 8px;">
+                            <p style="margin: 0 0 10px 0; color: #666666; font-size: 12px;">
+                                This email was automatically generated by AIRD1 Call AI Qualification System
+                            </p>
+                            <p style="margin: 0; color: #999999; font-size: 11px;">
+                                Call Request ID: {{ call_request_id }} | Timestamp: {{ timestamp }}
+                            </p>
+                        </td>
+                    </tr>
+                    
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

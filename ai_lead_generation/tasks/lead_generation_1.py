@@ -1,0 +1,1033 @@
+import json
+import os
+import re
+import time
+from datetime import datetime
+from typing import Any, Dict
+
+import requests
+from celery import shared_task
+from django.utils import timezone
+from dotenv import load_dotenv
+from jsonschema import Draft202012Validator
+from openai import OpenAI
+
+from ai_lead_generation.models import (
+    CandidateLeadResult,
+    LeadGenerationConfig,
+    LeadGenerationReport,
+)
+from subscription.models import Subscription
+
+load_dotenv()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API")
+TEMP_RESUME_FOLDER = "resume_leads"
+MODEL = "gpt-4o"
+
+os.makedirs(TEMP_RESUME_FOLDER, exist_ok=True)
+
+
+def return_Schema():
+    SCHEMA: Dict[str, Any] = {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "companies": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "Company name": {"type": "string"},
+                        "Industry / Sector": {
+                            "type": "string"
+                        },
+                        "Company address": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "street": {"type": "string"},
+                                "city": {"type": "string"},
+                                "state": {"type": "string"},
+                                "postalCode": {"type": "string"},
+                                "countryCode": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                            },
+                            "required": [
+                                "street",
+                                "city",
+                                "state",
+                                "postalCode",
+                                "countryCode",
+                                "name",
+                            ],
+                        },
+                        "Company Phone number (international format)": {
+                            "type": "string"
+                        },
+                        "Company Mobile number (international format)": {
+                            "type": "string"
+                        },
+                        "Company website (canonical URL)": {"type": "string"},
+                        "LinkedIn profile URL (company or contact)": {"type": "string"},
+                        "Twitter profile URL (company or contact)": {"type": "string"},
+                        "Contact person name (First Last)": {"type": "string"},
+                        "Contact person position": {
+                            "type": "string"
+                        },
+                        "Contact phone (international format)": {"type": "string"},
+                        "Contact email (work email preferred)": {"type": "string"},
+                        "Is related company (Logistics, Haulage, School, Transport & Recruitment)": {
+                            "type": "string",
+                            "enum": ["Yes", "No", "null"],
+                        },
+                    },
+                    "required": [
+                        "Company name",
+                        "Industry / Sector",
+                        "Company address",
+                        "Company Phone number (international format)",
+                        "Company Mobile number (international format)",
+                        "Company website (canonical URL)",
+                        "LinkedIn profile URL (company or contact)",
+                        "Twitter profile URL (company or contact)",
+                        "Contact person name (First Last)",
+                        "Contact person position",
+                        "Contact phone (international format)",
+                        "Contact email (work email preferred)",
+                        "Is related company (Logistics, Haulage, School, Transport & Recruitment)",
+                    ],
+                },
+            },
+            "Contacts in CV": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "person_name": {"type": "string"},
+                        "phone_or_mobile": {"type": "string"},
+                        "company_name": {"type": "string"},
+                    },
+                    "required": ["person_name", "phone_or_mobile", "company_name"],
+                },
+            },
+            "required": ["companies", "Contacts in CV"],
+        },
+    }
+    return SCHEMA
+
+
+def get_lead_instructions():
+    """System and user instructions for lead extraction"""
+    SYSTEM = (
+        "You are an information extraction engine. Your task is to read a CV text data, get the company list the CV owner has mentioned, check whole online about the company to get necessary data.\n"
+        "Task: From the given CV/resume text, list every company the candidate has worked with (past and present).\n"
+        "- Merge multiple roles at the same company into a single company entry.\n"
+        "- Only extract information explicitly present in the provided text; do NOT invent phone numbers, emails, or web facts.\n"
+        '- For any field that is missing or cannot be determined, return the literal string "null" (not a JSON null).\n'
+        "- For 'Industry / Sector', use a concise sector like Construction, Logistics, Manufacturing, etc.; if unclear, 'null'.\n"
+        "- For 'Company address', output an object with: street, city, state, postalCode, countryCode, name. If any subfield is missing, set it to \"null\". "
+        'countryCode should be a 2-letter code if clearly stated; otherwise use country name or "null". '
+        "name should be 'city, Country' when both available; otherwise the best available or \"null\".\n"
+        "- For 'Company Phone number (international format)', prefer the primary company phone number; if not present, 'null'.\n"
+        "- For 'Company Mobile number (international format)', prefer a main mobile number if available; else 'null'.\n"
+        "- For 'Company website (canonical URL)', prefer the primary company homepage; if not present, 'null'.\n"
+        "- 'LinkedIn profile URL (company or contact)': prefer company page; if only a named contact LinkedIn is present, use that; else 'null'.\n"
+        "- 'Twitter profile URL (company or contact)': prefer company page; if only a named contact Twitter is present, use that; else 'null'.\n"
+        "- 'Contact person name', 'position', 'phone', 'email': only emit if present; otherwise 'null'.\n"
+        "- For 'Is related company (Logistics, Haulage, School, Transport & Recruitment)', return 'Yes' if the company is related to Logistics, Haulage, School, Transport or Recruitment related. Else return 'No'. Otherwise if you can't scrap, return 'null'\n"
+        "- For 'Contacts in CV', you will find all the contacts which are mentioned in the CV text. Output a list of objects of person_name, phone_or_mobile, company_name. Here company_name field represents in which company(company name) the contact name found. It's okay if no company found for the contact, just return name and contact number. But remember, do not import the CV owner's contact information, since this data is only for the purpose of extracting company client information. If any subfield is missing, set it to \"null\" \n"
+        "- Return ONLY raw JSON (no markdown fences, no extra prose) with this structure:\n"
+        "{\n"
+        '  "companies": [\n'
+        "    {\n"
+        '      "Company name": "null",\n'
+        '      "Industry / Sector": "null",\n'
+        '      "Company address": {"street":"null","city":"null","state":"null","postalCode":"null","countryCode":"null","name":"null"},\n'
+        '      "Company Phone number (international format)": "null",\n'
+        '      "Company Mobile number (international format)": "null",\n'
+        '      "Company website (canonical URL)": "null",\n'
+        '      "LinkedIn profile URL (company or contact)": "null",\n'
+        '      "Twitter profile URL (company or contact)": "null",\n'
+        '      "Contact person name (First Last)": "null",\n'
+        '      "Contact person position": "null",\n'
+        '      "Contact phone (international format)": "null",\n'
+        '      "Contact email (work email preferred)": "null",\n'
+        '      "Is related company (Logistics, Haulage, School, Transport & Recruitment)": "null",\n'
+        '      "For any field not present, output the literal string "null".\n'
+        '      "Return ONLY raw JSON matching the specified structure (no markdown, no extra text).\n\n'
+        "    }\n"
+        "  ],\n"
+        '  "Contacts in CV": [\n'
+        "    {\n"
+        '      "person_name": "null",\n'
+        '      "phone_or_mobile": "null",\n'
+        '      "company_name": "null"\n'
+        '      "Return ONLY raw JSON matching the specified structure (no markdown, no extra text).\n\n'
+        "    }\n"
+        "  ]\n"
+        "}\n"
+    )
+
+    USER = (
+        "Extract the company and managerial/contact details from online based on the company details.\n"
+        'For any field not present, output the literal string "null".\n'
+        "Return ONLY raw JSON matching the specified structure (no markdown, no extra text).\n\n"
+        "CV TEXT START\n"
+        "{cv_text}\n"
+        "CV TEXT END\n"
+    )
+
+    return SYSTEM, USER
+
+
+def strip_code_fences(s: str) -> str:
+    s = s.strip()
+    if s.startswith("```"):
+        s = s.strip("`").strip()
+        if s.lower().startswith("json"):
+            s = s[4:].strip()
+    return s
+
+
+def find_json_block(s: str) -> str:
+    s = s.strip()
+    obj_match = re.search(r"\{.*\}\s*$", s, flags=re.DOTALL)
+    if obj_match:
+        return obj_match.group(0)
+    return s
+
+
+def normalize_nulls(data: Dict[str, Any]) -> Dict[str, Any]:
+    def to_str_null(v: Any) -> str:
+        if v is None or (isinstance(v, str) and not v.strip()):
+            return "null"
+        return str(v).strip() if isinstance(v, str) else str(v)
+
+    for cd in data.get("Contacts in CV", []):
+        for k in ["person_name", "phone_or_mobile", "company_name"]:
+            cd[k] = to_str_null(cd.get(k))
+
+    for c in data.get("companies", []):
+        for k in [
+            "Company name",
+            "Industry / Sector",
+            "Company Phone number (international format)",
+            "Company Mobile number (international format)",
+            "Company website (canonical URL)",
+            "LinkedIn profile URL (company or contact)",
+            "Twitter profile URL (company or contact)",
+            "Contact person name (First Last)",
+            "Contact person position",
+            "Contact phone (international format)",
+            "Contact email (work email preferred)",
+            "Is related company (Logistics, Haulage, School, Transport & Recruitment)",
+        ]:
+            c[k] = to_str_null(c.get(k))
+
+        addr = c.get("Company address", {})
+        if not isinstance(addr, dict):
+            addr = {}
+        for ak in ["street", "city", "state", "postalCode", "countryCode", "name"]:
+            addr[ak] = to_str_null(addr.get(ak))
+        c["Company address"] = addr
+
+    return data
+
+
+def extract_text_from_pdf(file_path: str) -> str:
+    try:
+        import fitz
+
+        doc = fitz.open(file_path)
+        text = []
+        for page in doc:
+            text.append(page.get_text("text"))
+        if text and "".join(text).strip():
+            return "\n".join(text)
+    except:
+        pass
+
+    try:
+        import pdfplumber
+
+        with pdfplumber.open(file_path) as pdf:
+            pages_text = [p.extract_text() or "" for p in pdf.pages]
+        if any(pages_text):
+            return "\n".join(pages_text)
+    except:
+        pass
+
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(file_path)
+        return "\n".join(page.extract_text() or "" for page in reader.pages).strip()
+    except:
+        pass
+
+    return ""
+
+
+def extract_companies_and_contacts_from_resume(resume_text: str) -> dict:
+    try:
+        SCHEMA = return_Schema()
+        SYSTEM, USER = get_lead_instructions()
+
+        client = OpenAI(api_key=OPENAI_API_KEY)
+
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM},
+                {"role": "user", "content": USER.format(cv_text=resume_text)},
+            ],
+        )
+
+        raw = response.choices[0].message.content or ""
+        content = strip_code_fences(raw)
+
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            candidate = find_json_block(content)
+            data = json.loads(candidate)
+
+        Draft202012Validator(SCHEMA).validate(data)
+        data = normalize_nulls(data)
+
+        companies = data.get("companies", [])
+        contacts = data.get("Contacts in CV", [])
+
+        print(f"  ✓ Extracted {len(companies)} companies and {len(contacts)} contacts")
+        return data
+
+    except Exception as e:
+        print(f"  ✗ Error extracting: {str(e)}")
+        return {"companies": [], "Contacts in CV": []}
+
+
+def fetch_all_attachments(candidate_id: int, config: LeadGenerationConfig) -> str:
+    """Fetch all PDF attachments for a candidate and extract text from them"""
+    try:
+        access_token = config.platform.access_token
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        attachments_url = (
+            f"{config.platform.base_url}/candidates/{candidate_id}/attachments"
+        )
+        params = {"Type": "Resume"}
+        response = requests.get(
+            attachments_url, headers=headers, params=params, timeout=30
+        )
+
+        if response.status_code == 401:
+            access_token = config.platform.refresh_access_token()
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = requests.get(
+                    attachments_url, headers=headers, params=params, timeout=30
+                )
+
+        if response.status_code not in [200, 201]:
+            print(f"  ✗ Failed to fetch attachments: {response.status_code}")
+            return ""
+
+        attachments = response.json().get("items", [])
+        if not attachments:
+            print("  ⚠ No attachments found")
+            return ""
+
+        print(f"  ✓ Found {len(attachments)} attachment(s)")
+
+        all_text = []
+
+        for idx, attachment in enumerate(attachments, 1):
+            temp_file_path = None
+            try:
+                attachment_id = attachment.get("attachmentId")
+                attachment_name = attachment.get("fileName", f"attachment_{idx}")
+                resume_url = attachment.get("url") or attachment.get("links", {}).get(
+                    "self"
+                )
+
+                if not resume_url:
+                    print(f"    ⚠ No URL for attachment {idx}")
+                    continue
+
+                file_extension = (
+                    attachment_name.lower().split(".")[-1]
+                    if "." in attachment_name
+                    else ""
+                )
+                if file_extension != "pdf":
+                    print(f"    ⚠ Skipping non-PDF file: {attachment_name}")
+                    continue
+
+                print(f"    Processing [{idx}/{len(attachments)}]: {attachment_name}")
+
+                temp_file_path = (
+                    f"{TEMP_RESUME_FOLDER}/lead_{candidate_id}_{attachment_id}.pdf"
+                )
+
+                resume_response = requests.get(
+                    resume_url,
+                    headers={"Authorization": f"Bearer {access_token}"},
+                    timeout=30,
+                )
+
+                if resume_response.status_code == 401:
+                    access_token = config.platform.refresh_access_token()
+                    if access_token:
+                        resume_response = requests.get(
+                            resume_url,
+                            headers={"Authorization": f"Bearer {access_token}"},
+                            timeout=30,
+                        )
+
+                if resume_response.status_code != 200:
+                    print(f"    ✗ Failed to download: {resume_response.status_code}")
+                    continue
+
+                with open(temp_file_path, "wb") as f:
+                    f.write(resume_response.content)
+
+                attachment_text = extract_text_from_pdf(temp_file_path)
+
+                if attachment_text.strip():
+                    all_text.append(
+                        f"\n--- Content from {attachment_name} ---\n{attachment_text}"
+                    )
+                    print(f"    ✓ Extracted text ({len(attachment_text)} chars)")
+                else:
+                    print(f"    ⚠ No text extracted from {attachment_name}")
+
+                if temp_file_path and os.path.exists(temp_file_path):
+                    os.remove(temp_file_path)
+
+            except Exception as e:
+                print(f"    ✗ Error processing attachment {idx}: {str(e)}")
+                if temp_file_path and os.path.exists(temp_file_path):
+                    try:
+                        os.remove(temp_file_path)
+                    except:
+                        pass
+
+        combined_text = "\n\n".join(all_text)
+
+        if combined_text.strip():
+            print(f"  ✓ Total extracted text: {len(combined_text)} characters")
+            return combined_text
+        else:
+            print("  ⚠ No text extracted from any attachments")
+            return ""
+
+    except Exception as e:
+        print(f"  ✗ Error fetching attachments: {str(e)}")
+        return ""
+
+
+def check_company_exists(company_name: str, config: LeadGenerationConfig) -> tuple:
+    try:
+        access_token = config.platform.access_token
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        search_url = f"{config.platform.base_url}/companies"
+        params = {"Name": company_name}
+
+        response = requests.get(search_url, headers=headers, params=params, timeout=30)
+
+        if response.status_code == 401:
+            access_token = config.platform.refresh_access_token()
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = requests.get(
+                    search_url, headers=headers, params=params, timeout=30
+                )
+
+        if response.status_code == 200:
+            companies = response.json().get("items", [])
+            if companies:
+                return True, companies[0].get("companyId")
+
+        return False, None
+    except:
+        return False, None
+
+
+def has_valid_contact_info(company_data: dict) -> bool:
+    """Check if company has at least one valid contact field"""
+    contact_name = company_data.get("Contact person name (First Last)", "").strip()
+    contact_email = company_data.get("Contact email (work email preferred)", "").strip()
+    contact_phone = company_data.get("Contact phone (international format)", "").strip()
+    
+    return (
+        (contact_name and contact_name != "null") or
+        (contact_email and contact_email != "null") or
+        (contact_phone and contact_phone != "null")
+    )
+
+
+def create_company_in_jobadder(company_data: dict, config: LeadGenerationConfig) -> int:
+    try:
+        access_token = config.platform.access_token
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        company_url = f"{config.platform.base_url}/companies"
+
+        payload = {"name": company_data.get("Company name").strip()}
+
+        if (
+            company_data.get("Industry / Sector")
+            and company_data.get("Industry / Sector") != "null"
+        ):
+            payload["summary"] = company_data.get("Industry / Sector").strip()
+
+        social = {}
+        linkedin = company_data.get("LinkedIn profile URL (company or contact)")
+        if linkedin and linkedin != "null" and linkedin.strip():
+            social["linkedin"] = linkedin.strip()
+
+        twitter = company_data.get("Twitter profile URL (company or contact)")
+        if twitter and twitter != "null" and twitter.strip():
+            social["twitter"] = twitter.strip()
+
+        if social:
+            payload["social"] = social
+
+        response = requests.post(company_url, json=payload, headers=headers, timeout=30)
+
+        if response.status_code == 401:
+            access_token = config.platform.refresh_access_token()
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = requests.post(
+                    company_url, json=payload, headers=headers, timeout=30
+                )
+
+        if response.status_code in [200, 201]:
+            company_id = response.json().get("companyId")
+            print(
+                f"    ✓ Created company: {company_data.get('Company name')} (ID: {company_id})"
+            )
+            return company_id
+
+        return None
+    except Exception as e:
+        print(f"    ✗ Error creating company: {str(e)}")
+        return None
+
+
+def create_company_address(
+    company_id: int, company_data: dict, config: LeadGenerationConfig
+):
+    try:
+        access_token = config.platform.access_token
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        address_url = f"{config.platform.base_url}/companies/{company_id}/addresses"
+        address_data = company_data.get("Company address", {})
+
+        payload = {"isPrimaryAddress": True}
+
+        if address_data.get("street") and address_data.get("street") != "null":
+            payload["street"] = [address_data.get("street")]
+        if address_data.get("city") and address_data.get("city") != "null":
+            payload["city"] = address_data.get("city")
+        if address_data.get("state") and address_data.get("state") != "null":
+            payload["state"] = address_data.get("state")
+        if address_data.get("postalCode") and address_data.get("postalCode") != "null":
+            payload["postalCode"] = address_data.get("postalCode")
+        if (
+            address_data.get("countryCode")
+            and address_data.get("countryCode") != "null"
+        ):
+            payload["countryCode"] = address_data.get("countryCode")
+        if address_data.get("name") and address_data.get("name") != "null":
+            payload["name"] = address_data.get("name")
+
+        phone = company_data.get("Company Phone number (international format)")
+        if phone and phone != "null":
+            payload["phone"] = phone.replace(" ", "").replace("-", "")
+
+        website = company_data.get("Company website (canonical URL)")
+        if website and website != "null":
+            payload["url"] = website
+
+        response = requests.post(address_url, json=payload, headers=headers, timeout=30)
+
+        if response.status_code == 401:
+            access_token = config.platform.refresh_access_token()
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = requests.post(
+                    address_url, json=payload, headers=headers, timeout=30
+                )
+
+        if response.status_code in [200, 201]:
+            print("      ✓ Created address")
+    except Exception as e:
+        print(f"      ✗ Error creating address: {str(e)}")
+
+
+def create_contact_in_jobadder(
+    contact_data: dict, company_id: int, config: LeadGenerationConfig
+) -> int:
+    """Create contact and return contact ID if successful"""
+    try:
+        access_token = config.platform.access_token
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        contact_url = f"{config.platform.base_url}/contacts"
+
+        full_name = contact_data.get("Contact person name (First Last)", "").strip()
+        first_name, last_name = ("Unknown", "")
+
+        if full_name and full_name != "null":
+            try:
+                first_name, last_name = full_name.split(" ", 1)
+            except ValueError:
+                first_name = full_name
+
+        payload = {"firstName": first_name, "lastName": last_name}
+
+        email = contact_data.get("Contact email (work email preferred)")
+        if email and email != "null":
+            payload["email"] = email
+
+        phone = contact_data.get("Contact phone (international format)")
+        if phone and phone != "null":
+            payload["phone"] = phone.replace(" ", "").replace("-", "")
+
+        position = contact_data.get("Contact person position")
+        if position and position != "null":
+            payload["position"] = position
+
+        if company_id:
+            payload["companyId"] = company_id
+
+        response = requests.post(contact_url, json=payload, headers=headers, timeout=30)
+
+        if response.status_code == 401:
+            access_token = config.platform.refresh_access_token()
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = requests.post(
+                    contact_url, json=payload, headers=headers, timeout=30
+                )
+
+        if response.status_code in [200, 201]:
+            contact_id = response.json().get("contactId")
+            print(f"      ✓ Created contact: {full_name} (ID: {contact_id})")
+            return contact_id
+        
+        return None
+    except Exception as e:
+        print(f"      ✗ Error creating contact: {str(e)}")
+        return None
+
+
+def create_additional_contact(
+    contact_data: dict, company_id: int, config: LeadGenerationConfig
+) -> int:
+    """Create additional contact and return contact ID if successful"""
+    try:
+        access_token = config.platform.access_token
+        headers = {
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        contact_url = f"{config.platform.base_url}/contacts"
+
+        full_name = contact_data.get("person_name", "").strip()
+        first_name, last_name = ("Unknown", "")
+
+        if full_name and full_name != "null":
+            try:
+                first_name, last_name = full_name.split(" ", 1)
+            except ValueError:
+                first_name = full_name
+
+        payload = {"firstName": first_name, "lastName": last_name}
+
+        phone = contact_data.get("phone_or_mobile")
+        if phone and phone != "null":
+            payload["phone"] = phone.replace(" ", "").replace("-", "")
+
+        if company_id:
+            payload["companyId"] = company_id
+
+        response = requests.post(contact_url, json=payload, headers=headers, timeout=30)
+
+        if response.status_code == 401:
+            access_token = config.platform.refresh_access_token()
+            if access_token:
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = requests.post(
+                    contact_url, json=payload, headers=headers, timeout=30
+                )
+
+        if response.status_code in [200, 201]:
+            contact_id = response.json().get("contactId")
+            print(f"        ✓ Created contact: {full_name} (ID: {contact_id})")
+            return contact_id
+        
+        return None
+    except Exception as e:
+        print(f"        ✗ Error creating contact: {str(e)}")
+        return None
+
+
+def process_candidate_for_lead_generation(
+    candidate: dict, config: LeadGenerationConfig, report: LeadGenerationReport
+):
+    """Process a single candidate and update report metrics"""
+    candidate_id = candidate.get("candidateId")
+    candidate_name = f"{candidate.get('firstName', '')} {candidate.get('lastName', '')}"
+
+    print(f"\n  [{candidate_id}] Processing: {candidate_name}")
+
+    result = CandidateLeadResult.objects.create(
+        report=report,
+        candidate_id=candidate_id,
+        candidate_name=candidate_name,
+    )
+
+    try:
+        resume_text = fetch_all_attachments(candidate_id, config)
+
+        if not resume_text:
+            print("  ⚠ No resume content")
+            report.candidates_with_no_resume += 1
+            report.save()
+            result.error_message = "No resume content found"
+            result.save()
+            return
+
+        result.had_resume = True
+        result.resume_text_length = len(resume_text)
+
+        extracted_data = extract_companies_and_contacts_from_resume(resume_text)
+        result.extracted_data = extracted_data
+
+        companies = extracted_data.get("companies", [])
+        contacts_in_cv = extracted_data.get("Contacts in CV", [])
+
+        result.companies_extracted = len(companies)
+        result.contacts_extracted = len(contacts_in_cv)
+
+        report.total_companies_extracted += len(companies)
+        report.total_contacts_extracted += len(contacts_in_cv)
+
+        print("Companies: ", companies)
+        print("Contacts: ", contacts_in_cv)
+
+        if not companies and not contacts_in_cv:
+            print("  ⚠ No data extracted")
+            report.candidates_with_no_data += 1
+            report.save()
+            result.error_message = "No data extracted from resume"
+            result.save()
+            return
+
+        company_id_map = {}
+        companies_created = 0
+        companies_skipped = 0
+        contacts_created = 0
+
+        # Process companies
+        for company in companies:
+            company_name = company.get("Company name", "").strip()
+
+            if not company_name or company_name == "null":
+                print("    ❌ Missing company name, skipping")
+                companies_skipped += 1
+                continue
+
+            is_related = company.get(
+                "Is related company (Logistics, Haulage, School, Transport & Recruitment)"
+            )
+            if is_related == "Yes":
+                print("    ❌ Related company (Logistics/Haulage/etc), skipping")
+                report.companies_skipped_related += 1
+                companies_skipped += 1
+                continue
+
+            address_name = company.get("Company address", {}).get("name")
+            if config.is_company_address_required and (
+                not address_name or address_name == "null"
+            ):
+                print("    ❌ Missing company address, skipping")
+                report.companies_skipped_no_address += 1
+                companies_skipped += 1
+                continue
+
+            # Check if contact info is required and present
+            if config.is_contacts_item_required and not has_valid_contact_info(company):
+                print("    ❌ Missing contact information (required), skipping")
+                report.companies_skipped_no_contact += 1
+                companies_skipped += 1
+                continue
+
+            exists, existing_id = check_company_exists(company_name, config)
+            if exists:
+                print(f"    ⚠ Company exists (ID: {existing_id}), skipping")
+                report.companies_skipped_existing += 1
+                companies_skipped += 1
+                continue
+
+            print(f"\n    Creating: {company_name}")
+
+            company_id = create_company_in_jobadder(company, config)
+
+            if company_id:
+                company_id_map[company_name] = company_id
+                result.created_company_ids.append(company_id)
+                report.created_company_ids.append(company_id)
+                companies_created += 1
+                report.total_companies_created += 1
+
+                create_company_address(company_id, company, config)
+                
+                # Create primary contact
+                contact_id = create_contact_in_jobadder(company, company_id, config)
+                if contact_id:
+                    result.created_contact_ids.append(contact_id)
+                    report.created_contact_ids.append(contact_id)
+                    report.total_contacts_created += 1
+                else:
+                    report.total_contacts_failed += 1
+                
+                time.sleep(0.5)
+            else:
+                report.total_companies_failed += 1
+
+        # Process additional contacts
+        if config.find_contacts_without_company:
+            for contact in contacts_in_cv:
+                person_name = contact.get("person_name", "").strip()
+                phone = contact.get("phone_or_mobile", "").strip()
+                company_name = contact.get("company_name", "").strip()
+
+                if (
+                    not person_name
+                    or person_name == "null"
+                    or not phone
+                    or phone == "null"
+                ):
+                    continue
+
+                print(f"\n      Creating additional contact: {person_name}")
+
+                company_id = None
+                if company_name and company_name != "null":
+                    company_id = company_id_map.get(company_name)
+                    if not company_id:
+                        exists, existing_id = check_company_exists(company_name, config)
+                        if exists:
+                            company_id = existing_id
+
+                contact_id = create_additional_contact(contact, company_id, config)
+                if contact_id:
+                    result.created_contact_ids.append(contact_id)
+                    report.created_contact_ids.append(contact_id)
+                    contacts_created += 1
+                    report.total_contacts_created += 1
+                else:
+                    report.total_contacts_failed += 1
+                
+                time.sleep(0.5)
+
+        # Update result
+        result.companies_created = companies_created
+        result.companies_skipped = companies_skipped
+        result.contacts_created = contacts_created
+        result.processed_successfully = True
+        result.save()
+
+        report.total_companies_skipped += companies_skipped
+        report.save()
+
+        print(f"\n  ✓ Completed: {candidate_id}")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"  ✗ Error: {error_msg}")
+
+        result.processed_successfully = False
+        result.error_message = error_msg
+        result.save()
+
+        report.total_candidates_failed += 1
+        report.candidate_ids_failed.append(candidate_id)
+
+        if not report.error_details:
+            report.error_details = {}
+        report.error_details[str(candidate_id)] = error_msg
+        report.save()
+
+
+def fetch_all_candidates(config: LeadGenerationConfig) -> list:
+    access_token = config.platform.access_token
+
+    if not access_token:
+        return []
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    all_candidates = []
+    limit = 100
+    offset = 0
+
+    try:
+        candidates_url = f"{config.platform.base_url}/candidates"
+
+        while True:
+            params = {"Limit": limit, "Offset": offset}
+            response = requests.get(
+                candidates_url, headers=headers, params=params, timeout=30
+            )
+
+            if response.status_code == 401:
+                access_token = config.platform.refresh_access_token()
+                if not access_token:
+                    return all_candidates
+                headers["Authorization"] = f"Bearer {access_token}"
+                response = requests.get(
+                    candidates_url, headers=headers, params=params, timeout=30
+                )
+
+            response.raise_for_status()
+            items = response.json().get("items", [])
+
+            if not items:
+                break
+
+            print(f"Fetched: offset={offset}, count={len(items)}")
+            all_candidates.extend(items)
+
+            if len(items) < limit:
+                break
+
+            offset += limit
+            time.sleep(1)
+
+        print(f"✓ Total candidates: {len(all_candidates)}")
+        return all_candidates
+
+    except Exception as e:
+        print(f"✗ Error fetching candidates: {str(e)}")
+        return all_candidates
+
+
+@shared_task
+def run_ai_lead_generation_for_organization(organization_id: int):
+    print(f"\n{'=' * 80}")
+    print(f"AI Client Lead Generation - Org: {organization_id}")
+    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"{'=' * 80}\n")
+
+    try:
+        config = LeadGenerationConfig.objects.get(
+            organization_id=organization_id, is_active=True
+        )
+    except LeadGenerationConfig.DoesNotExist:
+        print(f"✗ No active config for org {organization_id}")
+        return
+
+    report = LeadGenerationReport.objects.create(
+        organization_id=organization_id,
+        config=config,
+        status="processing",
+        started_at=timezone.now(),
+    )
+
+    try:
+        print("\n[Step 1] Fetching candidates...")
+        candidates = fetch_all_candidates(config)
+
+        if not candidates:
+            print("✗ No candidates found")
+            report.status = "completed"
+            report.completed_at = timezone.now()
+            report.save()
+            return
+
+        print(f"\n[Step 2] Processing {len(candidates)} candidates...")
+
+        for idx, candidate in enumerate(candidates, 1):
+            print(f"\n{'─' * 80}")
+            print(f"[{idx}/{len(candidates)}]")
+
+            candidate_id = candidate.get("candidateId")
+            report.candidate_ids_processed.append(candidate_id)
+            report.total_candidates_processed += 1
+            report.save()
+
+            process_candidate_for_lead_generation(candidate, config, report)
+            time.sleep(2)
+
+        report.status = "completed"
+        report.completed_at = timezone.now()
+        report.save()
+
+        print(f"\n{'=' * 80}")
+        print(f"✓ Completed: org {organization_id}")
+        print(f"  Total processed: {report.total_candidates_processed}")
+        print(f"  Companies created: {report.total_companies_created}")
+        print(f"  Contacts created: {report.total_contacts_created}")
+        print(f"  Company IDs: {report.created_company_ids}")
+        print(f"  Contact IDs: {report.created_contact_ids}")
+        print(f"  Success rate: {report.success_rate}%")
+        print(f"{'=' * 80}\n")
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"\n✗ Fatal error: {error_msg}")
+
+        report.status = "failed"
+        report.error_message = error_msg
+        report.completed_at = timezone.now()
+        report.save()
+
+
+@shared_task
+def initiate_ai_lead_generation_for_all_organizations():
+    print("\n[Task Initiated] AI Lead Generation for All Organizations")
+
+    subscribed_org_ids = Subscription.objects.filter(available_limit__gt=0).values_list(
+        "organization_id", flat=True
+    )
+
+    print(f"Found {len(subscribed_org_ids)} subscribed organizations")
+
+    for org_id in subscribed_org_ids:
+        print(f"\nQueuing org {org_id}")
+        run_ai_lead_generation_for_organization.delay(org_id)
+
+    print("\n✓ All organizations queued")
