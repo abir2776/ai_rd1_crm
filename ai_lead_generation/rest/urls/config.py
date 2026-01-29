@@ -7,12 +7,12 @@ from ai_lead_generation.rest.views.config import (
 
 urlpatterns = [
     path(
-        "part1",
+        "candidate-lead",
         LeadGenerationConfigListCreateView.as_view(),
         name="lead-generation-config",
     ),
     path(
-        "part2",
+        "opportunity",
         MarketingAutomationConfigListCreateView.as_view(),
         name="marketing-automation-config-list-create",
     ),
