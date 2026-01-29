@@ -468,7 +468,7 @@ def initiate_call(self, call_request_id):
         payload = {
             "from_phone_number": "+447428941629",
             "call_request_id": call_request_id,
-            "to_phone_number": call.phone,
+            "to_phone_number": str(call.phone),
             "client_name": call.name,
             "voice_id": "SQ1QAX1hsTZ1d6O0dCWA",
             "client_company_name": call.company_name,
