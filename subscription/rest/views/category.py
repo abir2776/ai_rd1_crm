@@ -6,4 +6,4 @@ from subscription.rest.serializers.category import CategorySerializer
 
 class CategoryListView(ListAPIView):
     serializer_class = CategorySerializer
-    queryset = Category.objects.filter()
+    queryset = Category.objects.filter().order_by("-created_at")
